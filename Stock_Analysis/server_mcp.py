@@ -672,4 +672,4 @@ if __name__ == "__main__":
                 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
         print("Launching TradingView MCP Server...")
-        technicalanalysis_server.run(transport="streamable-http", port=8349)
+        technicalanalysis_server.run(transport="streamable-http", port=8566)

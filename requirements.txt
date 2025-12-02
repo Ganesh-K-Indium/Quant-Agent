@@ -33,3 +33,4 @@ openai
 pre-commit
 black
 isort
+textblob
