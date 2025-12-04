@@ -59,13 +59,17 @@ async def fetch_stock_data(ticker: str, start_date: str, end_date: str) -> pd.Da
                 
             
 async def save_figure_as_base64(fig: go.Figure, filename: str, width: int = 1000, height: int = 600) -> dict:
+    """
+    Save figure to file and return path only (NOT the base64 data to avoid huge responses).
+    The base64 is stored separately but not returned to avoid overwhelming the LLM.
+    """
     try:
         loop = asyncio.get_event_loop()    
         await loop.run_in_executor(None, lambda: fig.write_image(filename, width=width, height=height))
         full_path = os.path.abspath(filename)
-        with open(full_path, "rb") as f:
-            encoded = base64.b64encode(f.read()).decode("utf-8")
-        return {"filename": full_path, "image_base64": encoded}
+        # Note: We intentionally do NOT return the base64 encoded image to avoid
+        # overwhelming the LLM with huge data. The file path is sufficient.
+        return {"filename": full_path, "success": True}
     except Exception as e:
         return {"error": str(e), "traceback": traceback.format_exc()}
 
@@ -73,7 +77,7 @@ async def save_figure_as_base64(fig: go.Figure, filename: str, width: int = 1000
 
 # Indicators Simple Moving Average
 @technicalanalysis_server.tool(
-        name="",
+        name="get_stock_sma",
         description="""Calculate the Simple Moving Average (SMA) for the user's given ticker in the given date range."
         Args:
                 ticker:str 
@@ -132,8 +136,9 @@ async def get_stock_sma(ticker: str, start_date: str, end_date: str) -> dict:
 
                 return {
                 "ticker": ticker,
+                "chart_generated": True,
                 "image_filename": result["filename"],
-                "image_base64": result["image_base64"]
+                "message": f"SMA chart for {ticker} has been generated and saved to {result['filename']}. The chart shows 20, 100, 200, and 300-day Simple Moving Averages."
                 }
                 
         except Exception as e:
@@ -200,10 +205,16 @@ async def get_stock_rsi(ticker: str, start_date: str, end_date: str) -> dict:
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
         else:
+                # Get current RSI value for the response
+                current_rsi = df['RSI'].iloc[-1] if not df['RSI'].empty else None
+                rsi_status = "overbought (>70)" if current_rsi and current_rsi > 70 else "oversold (<30)" if current_rsi and current_rsi < 30 else "neutral"
                 return {
             "ticker": ticker,
+            "chart_generated": True,
             "filename": result["filename"],
-            "image_base64": result["image_base64"]
+            "current_rsi": round(current_rsi, 2) if current_rsi else None,
+            "rsi_status": rsi_status,
+            "message": f"RSI chart for {ticker} has been generated and saved to {result['filename']}. Current RSI: {round(current_rsi, 2) if current_rsi else 'N/A'} ({rsi_status})."
         }
 
 #Bollinger Bands – show volatility using upper and lower band
@@ -272,10 +283,18 @@ async def get_stock_bollingerbands(ticker: str, start_date: str, end_date: str) 
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
         else:
+                # Get latest values for the response
+                upper_bb = df['Upper_BB'].iloc[-1] if not df['Upper_BB'].empty else None
+                lower_bb = df['Lower_BB'].iloc[-1] if not df['Lower_BB'].empty else None
+                sma_20 = df['SMA_20'].iloc[-1] if not df['SMA_20'].empty else None
                 return {
                 "ticker": ticker,
+                "chart_generated": True,
                 "image_filename": result["filename"],
-                "image_base64": result["image_base64"]
+                "upper_band": round(upper_bb, 2) if upper_bb else None,
+                "lower_band": round(lower_bb, 2) if lower_bb else None,
+                "middle_band_sma20": round(sma_20, 2) if sma_20 else None,
+                "message": f"Bollinger Bands chart for {ticker} has been generated and saved to {result['filename']}. Upper Band: {round(upper_bb, 2) if upper_bb else 'N/A'}, Lower Band: {round(lower_bb, 2) if lower_bb else 'N/A'}."
                 }
                 
 #MACD (Moving Average Convergence Divergence) – shows trend changes.
@@ -330,10 +349,18 @@ async def get_stock_macd(ticker: str, start_date: str, end_date: str) -> dict:
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
         else:
+                # Get latest MACD values for the response
+                macd_val = df['MACD'].iloc[-1] if not df['MACD'].empty else None
+                signal_val = df['MACD_signal'].iloc[-1] if not df['MACD_signal'].empty else None
+                macd_signal = "bullish (MACD above signal)" if macd_val and signal_val and macd_val > signal_val else "bearish (MACD below signal)" if macd_val and signal_val else "neutral"
                 return {
                 "ticker": ticker,
+                "chart_generated": True,
                 "image_filename": result["filename"],
-                "image_base64": result["image_base64"]
+                "macd_value": round(macd_val, 4) if macd_val else None,
+                "signal_value": round(signal_val, 4) if signal_val else None,
+                "macd_signal": macd_signal,
+                "message": f"MACD chart for {ticker} has been generated and saved to {result['filename']}. Current MACD: {round(macd_val, 4) if macd_val else 'N/A'}, Signal: {round(signal_val, 4) if signal_val else 'N/A'} ({macd_signal})."
                 }
 
 # Volume Trends
@@ -380,10 +407,18 @@ async def get_stock_volume(ticker: str, start_date: str, end_date: str) -> dict:
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
         else:
+                # Get latest volume values for the response
+                current_volume = df['Volume'].iloc[-1] if not df['Volume'].empty else None
+                avg_volume = df['Volume_SMA_20'].iloc[-1] if not df['Volume_SMA_20'].empty else None
+                volume_status = "above average" if current_volume and avg_volume and current_volume > avg_volume else "below average" if current_volume and avg_volume else "N/A"
                 return {
                 "ticker": ticker,
+                "chart_generated": True,
                 "image_filename": result["filename"],
-                "image_base64": result["image_base64"]
+                "current_volume": int(current_volume) if current_volume else None,
+                "avg_volume_20d": int(avg_volume) if avg_volume else None,
+                "volume_status": volume_status,
+                "message": f"Volume chart for {ticker} has been generated and saved to {result['filename']}. Current volume: {int(current_volume) if current_volume else 'N/A'} ({volume_status} compared to 20-day average)."
                 }
 
 # Support/Resistance (using local minima/maxima)
@@ -432,15 +467,20 @@ async def get_stock_support_resistance(ticker: str, start_date: str, end_date: s
 )
         
         filename = f"{ticker}_support_resistance.png"
-        #return await save_figure_as_base64(fig, filename)  
-        result = await save_figure_as_base64(fig,filename )
+        result = await save_figure_as_base64(fig, filename)
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
         else:
+                # Get key support and resistance levels
+                support_levels = df['Support'].dropna().tail(3).tolist()
+                resistance_levels = df['Resistance'].dropna().tail(3).tolist()
                 return {
             "ticker": ticker,
+            "chart_generated": True,
             "filename": result["filename"],
-            "image_base64": result["image_base64"]
+            "recent_support_levels": [round(s, 2) for s in support_levels] if support_levels else [],
+            "recent_resistance_levels": [round(r, 2) for r in resistance_levels] if resistance_levels else [],
+            "message": f"Support and Resistance chart for {ticker} has been generated and saved to {result['filename']}. Key support levels: {[round(s, 2) for s in support_levels] if support_levels else 'N/A'}. Key resistance levels: {[round(r, 2) for r in resistance_levels] if resistance_levels else 'N/A'}."
         }
 
         
@@ -585,14 +625,50 @@ async def get_all_technical_analysis(ticker: str, start_date: str, end_date: str
         )
         
         filename = f"{ticker}_technical_analysis.png"
-        result = await save_figure_as_base64(fig,filename )
+        result = await save_figure_as_base64(fig, filename)
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
         else:
+                # Get key technical indicators for summary
+                current_rsi = df['RSI'].iloc[-1] if 'RSI' in df and not df['RSI'].empty else None
+                current_macd = df['MACD'].iloc[-1] if 'MACD' in df and not df['MACD'].empty else None
+                current_signal = df['MACD_signal'].iloc[-1] if 'MACD_signal' in df and not df['MACD_signal'].empty else None
+                current_close = df['Close'].iloc[-1] if 'Close' in df and not df['Close'].empty else None
+                sma_20 = df['SMA_20'].iloc[-1] if 'SMA_20' in df and not df['SMA_20'].empty else None
+                sma_200 = df['SMA_200'].iloc[-1] if 'SMA_200' in df and not df['SMA_200'].empty else None
+                
+                # Determine overall technical outlook
+                signals = []
+                if current_rsi:
+                    if current_rsi > 70:
+                        signals.append("RSI overbought")
+                    elif current_rsi < 30:
+                        signals.append("RSI oversold")
+                if current_macd and current_signal:
+                    if current_macd > current_signal:
+                        signals.append("MACD bullish")
+                    else:
+                        signals.append("MACD bearish")
+                if current_close and sma_200:
+                    if current_close > sma_200:
+                        signals.append("Price above 200-day SMA (bullish)")
+                    else:
+                        signals.append("Price below 200-day SMA (bearish)")
+                
                 return {
             "ticker": ticker,
+            "chart_generated": True,
             "filename": result["filename"],
-            "image_base64": result["image_base64"]
+            "technical_summary": {
+                "rsi": round(current_rsi, 2) if current_rsi else None,
+                "macd": round(current_macd, 4) if current_macd else None,
+                "macd_signal": round(current_signal, 4) if current_signal else None,
+                "current_price": round(current_close, 2) if current_close else None,
+                "sma_20": round(sma_20, 2) if sma_20 else None,
+                "sma_200": round(sma_200, 2) if sma_200 else None
+            },
+            "signals": signals,
+            "message": f"Comprehensive technical analysis chart for {ticker} has been generated and saved to {result['filename']}. Key signals: {', '.join(signals) if signals else 'Neutral'}."
         }
 
 @technicalanalysis_server.tool(
@@ -608,63 +684,72 @@ async def get_all_technical_analysis(ticker: str, start_date: str, end_date: str
     """
 )
 async def get_chart_summary(file_path:str) -> dict:
-        """This tool reads a Base64-encoded stock chart image from the provided file_path,
-        sends it to Google's Gemini 2.5 Pro multimodal model, and returns a detailed,
+        """This tool reads a stock chart image from the provided file_path,
+        sends it to Google's Gemini model, and returns a detailed,
         human-friendly technical analysis.
         Args:
                 file_path (str): The path of the chart.
         Returns:
                 dict: a dictionary containing the summary of the technical analysis.
         """
-        with open(file_path, "rb") as f:
-                image_bytes = f.read()
-        
-        img_b64 = image_bytes
-        mime = "image/png"
-        model="gemini-2.5-flash-lite"
+        try:
+                with open(file_path, "rb") as f:
+                        image_bytes = f.read()
+                
+                # Base64 encode the raw image bytes
+                img_b64 = base64.b64encode(image_bytes).decode("utf-8")
+                mime = "image/png"
+                model = "gemini-2.0-flash"  # Using a more stable model
 
-        img_bytes = base64.b64decode(img_b64)
-        if len(img_bytes) > 7 * 1024 * 1024:
-                print("Warning: image >7MB, consider using Files API for better reliability.")
+                if len(image_bytes) > 7 * 1024 * 1024:
+                        print("Warning: image >7MB, consider using Files API for better reliability.")
 
-        system_prompt = (
-                "You are an expert financial technical analyst. Produce a structured, "
-                "plain-language summary for retail investors. Include headings: "
-                "Overview, Indicators Detected, Interpretation, Key Levels, "
-                "Trade Ideas (conservative/moderate/aggressive), Confidence & Risks, "
-                "Plain-English Takeaway."
-        )
+                system_prompt = (
+                        "You are an expert financial technical analyst. Produce a structured, "
+                        "plain-language summary for retail investors. Include headings: "
+                        "Overview, Indicators Detected, Interpretation, Key Levels, "
+                        "Trade Ideas (conservative/moderate/aggressive), Confidence & Risks, "
+                        "Plain-English Takeaway."
+                )
 
-        user_prompt = (
-                f"Analyze the attached chart image containing all the technical indicators. "
-                "1) Identify indicators shown (e.g., SMA, EMA, Bollinger Bands, MACD, RSI). "
-                "2) Explain each indicator's current signal. "
-                "3) List key price levels visible. "
-                "4) Propose 3 trade ideas (entry, stop-loss, target, rationale). "
-                "5) Give confidence level and one-sentence non-technical takeaway."
-        )
+                user_prompt = (
+                        f"Analyze the attached chart image containing all the technical indicators. "
+                        "1) Identify indicators shown (e.g., SMA, EMA, Bollinger Bands, MACD, RSI). "
+                        "2) Explain each indicator's current signal. "
+                        "3) List key price levels visible. "
+                        "4) Propose 3 trade ideas (entry, stop-loss, target, rationale). "
+                        "5) Give confidence level and one-sentence non-technical takeaway."
+                )
 
-        client = genai.Client(api_key="AIzaSyBuaXsBs7KVx-lH0BwHgjE3KbtPlnZFJQc")
+                api_key = os.getenv("GOOGLE_API_KEY", "AIzaSyBuaXsBs7KVx-lH0BwHgjE3KbtPlnZFJQc")
+                client = genai.Client(api_key=api_key)
 
-        contents = [
-                {
-                "role": "user",
-                "parts": [
-                        {"text": system_prompt},
-                        {"inline_data": {"mime_type": mime, "data": img_b64}},  # Base64 string
-                        {"text": user_prompt}
+                contents = [
+                        {
+                        "role": "user",
+                        "parts": [
+                                {"text": system_prompt},
+                                {"inline_data": {"mime_type": mime, "data": img_b64}},
+                                {"text": user_prompt}
+                        ]
+                        }
                 ]
-                }
-        ]
 
-        resp = client.models.generate_content(
-                model=model,
-                contents=contents
-        )
-        summary = resp.text if hasattr(resp, "text") else resp.candidates[0].content.parts[0].text
-        return {
-            "summary": summary
-            }
+                resp = client.models.generate_content(
+                        model=model,
+                        contents=contents
+                )
+                summary = resp.text if hasattr(resp, "text") else resp.candidates[0].content.parts[0].text
+                return {
+                        "success": True,
+                        "summary": summary
+                }
+        except Exception as e:
+                return {
+                        "success": False,
+                        "error": str(e),
+                        "traceback": traceback.format_exc()
+                }
     
 if __name__ == "__main__":
         import asyncio

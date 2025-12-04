@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from stock_exchange_agent.subagents.stock_information.langgraph_agent import create_stock_information_agent
 from stock_exchange_agent.subagents.technical_analysis_agent.langgraph_agent import create_technical_analysis_agent
 from stock_exchange_agent.subagents.ticker_finder_tool.langgraph_agent import create_ticker_finder_agent
+from stock_exchange_agent.subagents.research_agent.langgraph_agent import create_research_agent
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 import os
 from datetime import datetime
@@ -77,140 +78,55 @@ async def main():
         print("⏳ Waiting for MCP servers...")
         await wait_for_server("http://localhost:8565/mcp")  # Stock Information
         await wait_for_server("http://localhost:8566/mcp")  # Technical Analysis
+        await wait_for_server("http://localhost:8567/mcp")  # Research
         
         # Create sub-agents
         print("🔧 Creating sub-agents...")
         stock_info_agent = await create_stock_information_agent(checkpointer=saver)
         technical_agent = await create_technical_analysis_agent(checkpointer=saver)
         ticker_finder = await create_ticker_finder_agent(checkpointer=saver)
+        research_agent = await create_research_agent(checkpointer=saver)
         
         print("✅ Sub-agents created successfully")
     
-        # Create supervisor
         supervisor_graph = create_supervisor(
             model=ChatOpenAI(temperature=0, model_name="gpt-4o"),
-            agents=[stock_info_agent, technical_agent, ticker_finder],
+            agents=[stock_info_agent, technical_agent, ticker_finder, research_agent],
             prompt=(
-                "You are an intelligent supervisor managing three specialized stock analysis agents:\n\n"
-                "- **stock_information_agent**: Expert in stock fundamentals including current prices, historical data, "
-                "financial news, dividends, stock splits, financial statements (income/balance sheet/cashflow), "
-                "holder information, analyst recommendations, target prices, sentiment analysis, and projections. "
-                "Assign tasks related to fundamental analysis, company financials, news, and valuation metrics.\n\n"
-                "- **technical_analysis_agent**: Expert in technical analysis including SMA, RSI, Bollinger Bands, "
-                "MACD, Volume analysis, Support/Resistance levels, and comprehensive technical charting. "
-                "Assign tasks related to chart patterns, technical indicators, trading signals, and price trends.\n\n"
-                "- **ticker_finder_agent**: Expert in finding stock ticker symbols from company names using Yahoo Finance. "
-                "This agent searches and returns ONLY the ticker symbol. Use this agent FIRST when the user mentions "
-                "a company name instead of a ticker symbol.\n\n"
-                "🎯 CRITICAL WORKFLOW - TASK ROUTING GUIDELINES:\n\n"
-                "**Step 1: Ticker Resolution**\n"
-                "- If user mentions a COMPANY NAME (e.g., 'Apple', 'Tesla', 'Microsoft'):\n"
-                "  → ALWAYS delegate to ticker_finder_agent FIRST\n"
-                "  → Wait for the ticker symbol response\n"
-                "  → Store the ticker for subsequent operations\n"
-                "- If user provides a TICKER SYMBOL (e.g., 'AAPL', 'TSLA', 'MSFT'):\n"
-                "  → Skip ticker_finder_agent and proceed directly to appropriate specialist\n\n"
-                "**Step 2: Task Analysis & Routing**\n"
-                "After obtaining the ticker, analyze the request:\n\n"
-                "For FUNDAMENTAL/FINANCIAL queries → **stock_information_agent**:\n"
-                "  • Current price, market cap, P/E ratio, valuation metrics\n"
-                "  • Historical price data and trends\n"
-                "  • Financial news, announcements, sentiment\n"
-                "  • Dividends, stock splits, corporate actions\n"
-                "  • Financial statements (income, balance sheet, cash flow)\n"
-                "  • Holder information (institutions, insiders, mutual funds)\n"
-                "  • Analyst recommendations, price targets, upgrades/downgrades\n"
-                "  • 5-year projections, growth estimates\n"
-                "  • Options data and expiration dates\n"
-                "  • Company fundamentals and statistics\n\n"
-                "For TECHNICAL ANALYSIS queries → **technical_analysis_agent**:\n"
-                "  • Moving averages (SMA, EMA)\n"
-                "  • RSI (Relative Strength Index)\n"
-                "  • Bollinger Bands\n"
-                "  • MACD (Moving Average Convergence Divergence)\n"
-                "  • Volume analysis\n"
-                "  • Support and resistance levels\n"
-                "  • Chart patterns and technical indicators\n"
-                "  • Comprehensive technical analysis (all indicators)\n"
-                "  • Trading signals and technical outlook\n\n"
-                "**Step 3: Multi-Part Queries**\n"
-                "When user asks for BOTH fundamental and technical analysis:\n"
-                "  1. Get ticker symbol (if company name provided)\n"
-                "  2. Delegate to stock_information_agent for fundamental data\n"
-                "  3. Wait for completion\n"
-                "  4. Delegate to technical_analysis_agent for technical data\n"
-                "  5. Wait for completion\n"
-                "  6. Combine results into comprehensive response\n\n"
-                "**Step 4: Context Management**\n"
-                "- Maintain conversation context across turns\n"
-                "- Remember the ticker from previous exchanges\n"
-                "- If user says 'now show me technical analysis' after asking for price:\n"
-                "  → Use the stored ticker, don't ask for it again\n"
-                "- If user switches to a different company:\n"
-                "  → Use ticker_finder_agent to get the new ticker\n"
-                "  → Update the stored ticker for the session\n\n"
-                "🧠 INTELLIGENT RESPONSE GUIDELINES:\n"
-                "- For follow-up questions about previous results (e.g., 'how many?', 'what was the price?'), "
-                "analyze conversation history and answer directly without re-running tools\n"
-                "- When user asks analytical questions about data already retrieved, perform the analysis yourself "
-                "(count, summarize, compare) instead of delegating\n"
-                "- Only delegate to agents when NEW data needs to be fetched\n"
-                "- Remember user preferences and ticker context from conversation history\n"
-                "- Track what information has already been provided to avoid redundancy\n\n"
-                "📋 EXAMPLE WORKFLOWS:\n\n"
-                "**Example 1: Single Company, Single Request**\n"
-                "User: 'What is Apple's current stock price?'\n"
-                "You: \n"
-                "  1. Delegate to ticker_finder_agent('Apple') → receives 'AAPL'\n"
-                "  2. Delegate to stock_information_agent('AAPL', 'current price')\n"
-                "  3. Present the price to user\n\n"
-                "**Example 2: Ticker Provided, Technical Analysis**\n"
-                "User: 'Show me RSI chart for TSLA'\n"
-                "You:\n"
-                "  1. Skip ticker_finder (already have TSLA)\n"
-                "  2. Delegate to technical_analysis_agent('TSLA', 'RSI')\n"
-                "  3. Present the technical analysis\n\n"
-                "**Example 3: Multi-Part Query**\n"
-                "User: 'Give me Microsoft's latest news and technical analysis'\n"
-                "You:\n"
-                "  1. Delegate to ticker_finder_agent('Microsoft') → 'MSFT'\n"
-                "  2. Delegate to stock_information_agent('MSFT', 'news')\n"
-                "  3. Wait for completion\n"
-                "  4. Delegate to technical_analysis_agent('MSFT', 'comprehensive analysis')\n"
-                "  5. Wait for completion\n"
-                "  6. Combine and present both results\n\n"
-                "**Example 4: Context Continuation**\n"
-                "User: 'What is Tesla's price?'\n"
-                "You: [Get TSLA, show price]\n"
-                "User: 'Now show me the RSI'\n"
-                "You:\n"
-                "  1. Recall ticker from context (TSLA)\n"
-                "  2. Delegate to technical_analysis_agent('TSLA', 'RSI')\n"
-                "  3. Present RSI analysis\n\n"
-                "**Example 5: Company Switch**\n"
-                "User: 'What is Apple's price?'\n"
-                "You: [Get AAPL, show price]\n"
-                "User: 'How about Amazon?'\n"
-                "You:\n"
-                "  1. Delegate to ticker_finder_agent('Amazon') → 'AMZN'\n"
-                "  2. Delegate to stock_information_agent('AMZN', 'current price')\n"
-                "  3. Present Amazon's price\n\n"
-                "⚠️ CRITICAL RULES:\n"
-                "1. ALWAYS assign work to ONE agent at a time - do not call agents in parallel\n"
-                "2. WAIT for each agent to complete before proceeding to the next\n"
-                "3. Do NOT attempt to answer stock-specific questions yourself - always delegate to specialist agents\n"
-                "4. ALWAYS use ticker_finder_agent when user provides a company name (not a ticker)\n"
-                "5. Provide clear context about why you're routing to each specific agent\n"
-                "6. Maintain conversation memory and avoid redundant ticker lookups\n"
-                "7. Combine multiple agent responses into coherent, comprehensive answers\n\n"
-                "Remember: You are the orchestrator. Your job is to understand user intent, manage the workflow, "
-                "ensure proper routing, maintain context, and deliver comprehensive results by coordinating the "
-                "specialized agents. You do not have direct access to stock data - you must delegate to the appropriate agents."
+                "You are a supervisor managing four stock analysis agents. Route user requests to the appropriate agent.\n\n"
+                "**AGENTS:**\n"
+                "1. **ticker_finder_agent**: Converts company names to ticker symbols. Use FIRST when user provides a company name.\n"
+                "2. **stock_information_agent**: Stock prices, financials, news, dividends, holder info, recommendations, options, projections.\n"
+                "3. **technical_analysis_agent**: Charts and technical indicators (SMA, RSI, MACD, Bollinger Bands, Volume, Support/Resistance).\n"
+                "4. **research_agent**: Web research, analyst ratings, sentiment analysis, bull/bear scenarios.\n\n"
+                "**ROUTING RULES:**\n"
+                "- Company name (Apple, Tesla) → ticker_finder_agent FIRST, then route to specialist\n"
+                "- Ticker symbol provided (AAPL, TSLA) → Route directly to specialist\n"
+                "- Price/financials/news/dividends/holders/options → stock_information_agent\n"
+                "- Charts/RSI/SMA/MACD/Bollinger/technical → technical_analysis_agent\n"
+                "- Analyst ratings/research/scenarios/sentiment → research_agent\n\n"
+                "**CRITICAL RULES:**\n"
+                "1. Delegate to ONE agent at a time. Wait for response before next delegation.\n"
+                "2. Do NOT make up stock data. Only present what agents return.\n"
+                "3. If agent asks for more info (dates, parameters), relay that to user.\n"
+                "4. Remember ticker from conversation - don't re-lookup unless company changes.\n"
+                "5. For multi-part queries, delegate sequentially and combine results.\n"
+                "6. Do NOT invent prices, percentages, or recommendations.\n\n"
+                "**EXAMPLES:**\n"
+                "User: 'Apple stock price' → ticker_finder_agent → stock_information_agent\n"
+                "User: 'TSLA RSI chart' → technical_analysis_agent (ticker already provided)\n"
+                "User: 'What do analysts think about NVDA?' → research_agent\n"
+                "User: 'Show me RSI for Netflix' (no dates) → Agent will ask for date range, relay to user"
             ),
             add_handoff_back_messages=True,
             output_mode="full_history",
         )
-        supervisor = supervisor_graph.compile(checkpointer=saver)
+        supervisor = supervisor_graph.compile(
+            checkpointer=saver,
+        )
+        
+        # Set recursion limit for the supervisor to prevent infinite loops
+        supervisor.recursion_limit = 50
         
         print("\n" + "="*80)
         print("🤖 STOCK ANALYSIS SUPERVISOR AGENT - Ready for Commands")
@@ -235,6 +151,15 @@ async def main():
         print("  • Support and resistance levels")
         print("  • Comprehensive technical charting")
         
+        print("\n🔬 RESEARCH & SCENARIOS:")
+        print("  • Web search for analyst ratings and news")
+        print("  • Aggregated analyst consensus and price targets")
+        print("  • Sentiment analysis of market commentary")
+        print("  • Bull case scenarios with catalysts")
+        print("  • Bear case scenarios with risks")
+        print("  • Comprehensive investment research")
+        print("  • Upgrades, downgrades, and rating changes")
+        
         print("\n🔍 TICKER LOOKUP:")
         print("  • Find ticker symbols from company names")
         print("  • Support for US and international stocks")
@@ -242,7 +167,7 @@ async def main():
         print("\n🤖 INTELLIGENT FEATURES:")
         print("  • Automatic ticker resolution from company names")
         print("  • Context-aware conversation (remembers previous tickers)")
-        print("  • Multi-part query handling (fundamentals + technicals)")
+        print("  • Multi-part query handling (fundamentals + technicals + research)")
         print("  • Smart routing to specialized agents")
         
         print("\nEnter your command (or 'quit' to exit): ")

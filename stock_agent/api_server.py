@@ -20,6 +20,7 @@ from main_agent import (
 from stock_exchange_agent.subagents.stock_information.langgraph_agent import create_stock_information_agent
 from stock_exchange_agent.subagents.technical_analysis_agent.langgraph_agent import create_technical_analysis_agent
 from stock_exchange_agent.subagents.ticker_finder_tool.langgraph_agent import create_ticker_finder_agent
+from stock_exchange_agent.subagents.research_agent.langgraph_agent import create_research_agent
 
 from langchain_openai import ChatOpenAI
 from langgraph_supervisor import create_supervisor
@@ -92,99 +93,51 @@ async def initialize_agents():
         print("⏳ Waiting for MCP servers...")
         await wait_for_server("http://localhost:8565/mcp")  # Stock Information
         await wait_for_server("http://localhost:8566/mcp")  # Technical Analysis
+        await wait_for_server("http://localhost:8567/mcp")  # Research
 
         # Create sub-agents
         print("🔧 Creating sub-agents...")
         stock_info_agent = await create_stock_information_agent(checkpointer=saver)
         technical_agent = await create_technical_analysis_agent(checkpointer=saver)
         ticker_finder = await create_ticker_finder_agent(checkpointer=saver)
+        research_agent = await create_research_agent(checkpointer=saver)
 
         print("✅ Sub-agents created successfully")
 
         # Create supervisor
-        supervisor_prompt = (
-            "You are an intelligent supervisor managing three specialized stock analysis agents:\n\n"
-            "- **stock_information_agent**: Expert in stock fundamentals including current prices, historical data, "
-            "financial news, dividends, stock splits, financial statements (income/balance sheet/cashflow), "
-            "holder information, analyst recommendations, target prices, sentiment analysis, and projections. "
-            "Assign tasks related to fundamental analysis, company financials, news, and valuation metrics.\n\n"
-            "- **technical_analysis_agent**: Expert in technical analysis including SMA, RSI, Bollinger Bands, "
-            "MACD, Volume analysis, Support/Resistance levels, and comprehensive technical charting. "
-            "Assign tasks related to chart patterns, technical indicators, trading signals, and price trends.\n\n"
-            "- **ticker_finder_agent**: Expert in finding stock ticker symbols from company names using Yahoo Finance. "
-            "This agent searches and returns ONLY the ticker symbol. Use this agent FIRST when the user mentions "
-            "a company name instead of a ticker symbol.\n\n"
-            "🎯 CRITICAL WORKFLOW - TASK ROUTING GUIDELINES:\n\n"
-            "**Step 1: Ticker Resolution**\n"
-            "- If user mentions a COMPANY NAME (e.g., 'Apple', 'Tesla', 'Microsoft'):\n"
-            "  → ALWAYS delegate to ticker_finder_agent FIRST\n"
-            "  → Wait for the ticker symbol response\n"
-            "  → Store the ticker for subsequent operations\n"
-            "- If user provides a TICKER SYMBOL (e.g., 'AAPL', 'TSLA', 'MSFT'):\n"
-            "  → Skip ticker_finder_agent and proceed directly to appropriate specialist\n\n"
-            "**Step 2: Task Analysis & Routing**\n"
-            "After obtaining the ticker, analyze the request:\n\n"
-            "For FUNDAMENTAL/FINANCIAL queries → **stock_information_agent**:\n"
-            "  • Current price, market cap, P/E ratio, valuation metrics\n"
-            "  • Historical price data and trends\n"
-            "  • Financial news, announcements, sentiment\n"
-            "  • Dividends, stock splits, corporate actions\n"
-            "  • Financial statements (income, balance sheet, cash flow)\n"
-            "  • Holder information (institutions, insiders, mutual funds)\n"
-            "  • Analyst recommendations, price targets, upgrades/downgrades\n"
-            "  • 5-year projections, growth estimates\n"
-            "  • Options data and expiration dates\n"
-            "  • Company fundamentals and statistics\n\n"
-            "For TECHNICAL ANALYSIS queries → **technical_analysis_agent**:\n"
-            "  • Moving averages (SMA, EMA)\n"
-            "  • RSI (Relative Strength Index)\n"
-            "  • Bollinger Bands\n"
-            "  • MACD (Moving Average Convergence Divergence)\n"
-            "  • Volume analysis\n"
-            "  • Support and resistance levels\n"
-            "  • Chart patterns and technical indicators\n"
-            "  • Comprehensive technical analysis (all indicators)\n"
-            "  • Trading signals and technical outlook\n\n"
-            "**Step 3: Multi-Part Queries**\n"
-            "When user asks for BOTH fundamental and technical analysis:\n"
-            "  1. Get ticker symbol (if company name provided)\n"
-            "  2. Delegate to stock_information_agent for fundamental data\n"
-            "  3. Wait for completion\n"
-            "  4. Delegate to technical_analysis_agent for technical data\n"
-            "  5. Wait for completion\n"
-            "  6. Combine results into comprehensive response\n\n"
-            "**Step 4: Context Management**\n"
-            "- Maintain conversation context across turns\n"
-            "- Remember the ticker from previous exchanges\n"
-            "- If user says 'now show me technical analysis' after asking for price:\n"
-            "  → Use the stored ticker, don't ask for it again\n"
-            "- If user switches to a different company:\n"
-            "  → Use ticker_finder_agent to get the new ticker\n"
-            "  → Update the stored ticker for the session\n\n"
-            "🧠 INTELLIGENT RESPONSE GUIDELINES:\n"
-            "- For follow-up questions about previous results, analyze conversation history and answer directly\n"
-            "- When user asks analytical questions about data already retrieved, perform the analysis yourself\n"
-            "- Only delegate to agents when NEW data needs to be fetched\n"
-            "- Remember user preferences and ticker context from conversation history\n\n"
-            "⚠️ CRITICAL RULES:\n"
-            "1. ALWAYS assign work to ONE agent at a time - do not call agents in parallel\n"
-            "2. WAIT for each agent to complete before proceeding to the next\n"
-            "3. Do NOT attempt to answer stock-specific questions yourself - always delegate to specialist agents\n"
-            "4. ALWAYS use ticker_finder_agent when user provides a company name (not a ticker)\n"
-            "5. Provide clear context about why you're routing to each specific agent\n"
-            "6. Maintain conversation memory and avoid redundant ticker lookups\n"
-            "7. Combine multiple agent responses into coherent, comprehensive answers"
-        )
+        supervisor_prompt = """You are a stock analysis supervisor managing 4 agents:
+
+AGENTS:
+1. ticker_finder_agent - Converts company names to ticker symbols
+2. stock_information_agent - Fundamental data (prices, financials, news, statements, holders, options)
+3. technical_analysis_agent - Technical charts (SMA, RSI, MACD, Bollinger, Volume, Support/Resistance)
+4. research_agent - Analyst ratings, web research, sentiment, bull/bear scenarios
+
+ROUTING RULES:
+- Company name mentioned → ticker_finder_agent FIRST
+- Price/financials/news/fundamentals → stock_information_agent  
+- Charts/indicators/technical analysis → technical_analysis_agent
+- Analyst opinions/research/scenarios → research_agent
+
+CRITICAL:
+- If user doesn't provide required info (dates, parameters), ASK before delegating
+- One agent at a time, wait for completion
+- Remember ticker from conversation - don't re-lookup
+- Never invent data - only report what agents return
+- Combine multi-agent responses into coherent answer"""
 
         global supervisor
         supervisor_graph = create_supervisor(
             model=ChatOpenAI(temperature=0, model_name="gpt-4o"),
-            agents=[stock_info_agent, technical_agent, ticker_finder],
+            agents=[stock_info_agent, technical_agent, ticker_finder, research_agent],
             prompt=supervisor_prompt,
             add_handoff_back_messages=True,
             output_mode="full_history",
         )
         supervisor = supervisor_graph.compile(checkpointer=saver)
+        
+        # Set recursion limit for the supervisor to prevent infinite loops
+        supervisor.recursion_limit = 50
 
         agents_initialized = True
         print("✅ Supervisor agent initialized successfully")
@@ -226,7 +179,7 @@ async def health_check():
     Comprehensive health check for the API and all MCP servers.
     
     Checks:
-    - Both MCP servers are responding (Stock Info and Technical Analysis)
+    - All MCP servers are responding (Stock Info, Technical Analysis, Research)
     - Agents are initialized
     - Database connectivity (PostgreSQL)
     - Supervisor agent is ready
@@ -259,6 +212,7 @@ async def health_check():
     servers_status = {
         "stock_information": check_server("http://localhost:8565/mcp"),
         "technical_analysis": check_server("http://localhost:8566/mcp"),
+        "research": check_server("http://localhost:8567/mcp"),
     }
 
     # Determine overall health
@@ -452,7 +406,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "api_server:app",
         host="0.0.0.0",
-        port=8567,
+        port=8568,
         reload=False,
         log_level="info"
     )
