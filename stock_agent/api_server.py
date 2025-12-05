@@ -24,7 +24,7 @@ from stock_exchange_agent.subagents.research_agent.langgraph_agent import create
 
 from langchain_openai import ChatOpenAI
 from langgraph_supervisor import create_supervisor
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langchain_core.messages import HumanMessage
 
 # Pydantic models for API requests/responses
@@ -78,13 +78,10 @@ async def initialize_agents():
         print("🚀 Initializing Stock Analysis Supervisor Agent...")
         
         # Initialize memory saver
-        print("💾 Initializing PostgreSQL memory...")
-        connection_string = os.getenv("POSTGRES_CONNECTION_STRING")
+        print("💾 Initializing SQLite memory...")
+        db_path = os.getenv("SQLITE_DB_PATH", "sqlite:///checkpoints.db")
         
-        if not connection_string:
-            raise ValueError("POSTGRES_CONNECTION_STRING not found in environment variables")
-        
-        saver_cm = AsyncPostgresSaver.from_conn_string(connection_string)
+        saver_cm = AsyncSqliteSaver.from_conn_string(db_path)
         saver = await saver_cm.__aenter__()
         await saver.setup()  # Creates tables if needed
         print("✅ Memory initialized successfully")

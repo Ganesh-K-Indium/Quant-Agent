@@ -9,7 +9,7 @@ langchain-core
 langchain-mcp-adapters
 langchain-openai
 langgraph
-langgraph-checkpoint-postgres
+langgraph-checkpoint-sqlite
 langgraph-supervisor
 loguru
 mcp[cli]
@@ -34,3 +34,6 @@ pre-commit
 black
 isort
 textblob
+beautifulsoup4
+lxml
+playwright

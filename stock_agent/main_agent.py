@@ -20,7 +20,7 @@ from stock_exchange_agent.subagents.stock_information.langgraph_agent import cre
 from stock_exchange_agent.subagents.technical_analysis_agent.langgraph_agent import create_technical_analysis_agent
 from stock_exchange_agent.subagents.ticker_finder_tool.langgraph_agent import create_ticker_finder_agent
 from stock_exchange_agent.subagents.research_agent.langgraph_agent import create_research_agent
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 import os
 from datetime import datetime
 import json
@@ -61,16 +61,10 @@ async def main():
     print("=" * 80)
     
     # Initialize memory saver
-    print("💾 Initializing PostgreSQL memory...")
-    connection_string = os.getenv("POSTGRES_CONNECTION_STRING")
+    print("💾 Initializing SQLite memory...")
+    db_path = os.getenv("SQLITE_DB_PATH", "sqlite:///checkpoints.db")
     
-    if not connection_string:
-        print("❌ ERROR: POSTGRES_CONNECTION_STRING not found in environment variables")
-        print("Please set it in your .env file:")
-        print('POSTGRES_CONNECTION_STRING="postgresql://user:password@localhost:5432/dbname"')
-        return
-    
-    async with AsyncPostgresSaver.from_conn_string(connection_string) as saver:
+    async with AsyncSqliteSaver.from_conn_string(db_path) as saver:
         await saver.setup()  # Creates tables if needed
         print("✅ Memory initialized successfully")
         
