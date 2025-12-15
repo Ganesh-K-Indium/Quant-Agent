@@ -6,7 +6,7 @@ import asyncio
 import aiohttp
 from langchain_openai import ChatOpenAI
 from langchain_mcp_adapters.tools import load_mcp_tools
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 from dotenv import load_dotenv
@@ -101,11 +101,11 @@ You: "Which holder information would you like? Options: major_holders, instituti
     await session.initialize()
     tools = await load_mcp_tools(session)
     
-    agent = create_react_agent(
+    agent = create_agent(
         model=model,
         tools=tools,
         name="stock_information_agent",
-        prompt=system_prompt,
+        system_prompt=system_prompt,
         checkpointer=checkpointer
     )
     

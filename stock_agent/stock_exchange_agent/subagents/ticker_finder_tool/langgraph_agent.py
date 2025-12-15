@@ -5,7 +5,7 @@ Finds stock ticker symbols from company names using Tavily search
 import asyncio
 from langchain_openai import ChatOpenAI
 from langchain_community.tools import TavilySearchResults
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from dotenv import load_dotenv
 import os
 import warnings
@@ -54,11 +54,11 @@ Your response must be ONLY the ticker symbol, nothing else."""
         include_domains=["https://finance.yahoo.com/"],
     )
     
-    agent = create_react_agent(
+    agent = create_agent(
         model=model,
         tools=[tavily_tool],
         name="ticker_finder_agent",
-        prompt=system_prompt,
+        system_prompt=system_prompt,
         checkpointer=checkpointer
     )
     

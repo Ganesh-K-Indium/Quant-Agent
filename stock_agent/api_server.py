@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any
 import json
 import os
 from datetime import datetime
+from contextlib import asynccontextmanager
 
 # Import the existing agent functionality
 from main_agent import (
@@ -50,11 +51,26 @@ agents_initialized = False
 saver = None
 saver_cm = None
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await initialize_agents()
+    yield
+    # Shutdown
+    global saver_cm
+    if saver_cm is not None:
+        try:
+            await saver_cm.__aexit__(None, None, None)
+            print("✅ Memory saver cleaned up successfully")
+        except Exception as e:
+            print(f"⚠️ Error cleaning up memory saver: {e}")
+
 # FastAPI app
 app = FastAPI(
     title="Stock Analysis Supervisor API",
     description="REST API for the Stock Analysis Supervisor Agent with LangGraph",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -144,24 +160,6 @@ CRITICAL:
         import traceback
         traceback.print_exc()
         raise
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize agents on server startup"""
-    await initialize_agents()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on server shutdown"""
-    global saver_cm
-    if saver_cm is not None:
-        try:
-            await saver_cm.__aexit__(None, None, None)
-            print("✅ Memory saver cleaned up successfully")
-        except Exception as e:
-            print(f"⚠️ Error cleaning up memory saver: {e}")
 
 
 @app.get("/", tags=["Health"])

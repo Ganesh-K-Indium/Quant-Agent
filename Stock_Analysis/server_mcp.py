@@ -18,6 +18,7 @@ import os
 import base64
 from google import genai
 from google.genai import types
+import datetime
 
 # Initialize FastMCP server
 technicalanalysis_server = FastMCP(
@@ -129,7 +130,8 @@ async def get_stock_sma(ticker: str, start_date: str, end_date: str) -> dict:
                 
         )
         
-                filename = f"{ticker}_sma_chart.png"
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{ticker}_sma_chart_{timestamp}.png"
                 result = await save_figure_as_base64(fig, filename) 
                 if "error" in result:
                         return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
@@ -200,7 +202,8 @@ async def get_stock_rsi(ticker: str, start_date: str, end_date: str) -> dict:
             
         )
 
-        filename = f"{ticker}_rsi_chart.png"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{ticker}_rsi_chart_{timestamp}.png"
         result= await save_figure_as_base64(fig, filename)
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
@@ -278,7 +281,8 @@ async def get_stock_bollingerbands(ticker: str, start_date: str, end_date: str) 
             width=1000
         )
 
-        filename = f"{ticker}_bollingerbands_chart.png"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{ticker}_bollingerbands_chart_{timestamp}.png"
         result= await save_figure_as_base64(fig, filename)
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
@@ -344,7 +348,8 @@ async def get_stock_macd(ticker: str, start_date: str, end_date: str) -> dict:
         width=1400
         )
         
-        filename = f"{ticker}_macd_chart.png"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{ticker}_macd_chart_{timestamp}.png"
         result= await save_figure_as_base64(fig, filename)
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
@@ -402,7 +407,8 @@ async def get_stock_volume(ticker: str, start_date: str, end_date: str) -> dict:
              width=1400
          )
         
-        filename = f"{ticker}_volume_trend.png"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{ticker}_volume_trend_{timestamp}.png"
         result= await save_figure_as_base64(fig, filename)
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
@@ -466,7 +472,8 @@ async def get_stock_support_resistance(ticker: str, start_date: str, end_date: s
         
 )
         
-        filename = f"{ticker}_support_resistance.png"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{ticker}_support_resistance_{timestamp}.png"
         result = await save_figure_as_base64(fig, filename)
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
@@ -624,7 +631,8 @@ async def get_all_technical_analysis(ticker: str, start_date: str, end_date: str
         width=1200
         )
         
-        filename = f"{ticker}_technical_analysis.png"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{ticker}_technical_analysis_{timestamp}.png"
         result = await save_figure_as_base64(fig, filename)
         if "error" in result:
                 return {"ticker": ticker, "error": result["error"], "traceback": result["traceback"]}
