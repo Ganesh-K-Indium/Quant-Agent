@@ -20,7 +20,7 @@ from main_agent import (
 )
 from stock_exchange_agent.subagents.stock_information.langgraph_agent import create_stock_information_agent
 from stock_exchange_agent.subagents.technical_analysis_agent.langgraph_agent import create_technical_analysis_agent
-from stock_exchange_agent.subagents.ticker_finder_tool.langgraph_agent import create_ticker_finder_agent
+from stock_exchange_agent.subagents.symbol_exchange_agent.langgraph_agent import create_symbol_exchange_agent
 from stock_exchange_agent.subagents.research_agent.langgraph_agent import create_research_agent
 
 from langchain_openai import ChatOpenAI
@@ -117,12 +117,13 @@ async def initialize_agents():
         await wait_for_server("http://localhost:8565/mcp")  # Stock Information
         await wait_for_server("http://localhost:8566/mcp")  # Technical Analysis
         await wait_for_server("http://localhost:8567/mcp")  # Research
+        await wait_for_server("http://localhost:8568/mcp")  # Symbol & Exchange
 
         # Create sub-agents
         print("🔧 Creating sub-agents...")
         stock_info_agent = await create_stock_information_agent(checkpointer=saver)
         technical_agent = await create_technical_analysis_agent(checkpointer=saver)
-        ticker_finder = await create_ticker_finder_agent(checkpointer=saver)
+        symbol_exchange_agent = await create_symbol_exchange_agent(checkpointer=saver)
         research_agent = await create_research_agent(checkpointer=saver)
 
         print("✅ Sub-agents created successfully")
@@ -131,18 +132,22 @@ async def initialize_agents():
         supervisor_prompt = """You are a stock analysis supervisor managing 4 agents:
 
 AGENTS:
-1. ticker_finder_agent - Converts company names to ticker symbols
+1. symbol_exchange_agent - Ticker lookup, ISIN resolution, exchange mapping, symbol validation, cross-listings
 2. stock_information_agent - Fundamental data (prices, financials, news, statements, holders, options)
 3. technical_analysis_agent - Technical charts (SMA, RSI, MACD, Bollinger, Volume, Support/Resistance)
 4. research_agent - Analyst ratings, web research, sentiment, bull/bear scenarios
 
 ROUTING RULES:
-- Company name mentioned → ticker_finder_agent FIRST
+- Company name mentioned → symbol_exchange_agent FIRST (get ticker + ISIN + exchange)
+- Ticker validation/ISIN/exchange queries → symbol_exchange_agent
+- Cross-listing questions (NSE vs BSE) → symbol_exchange_agent
 - Price/financials/news/fundamentals → stock_information_agent  
 - Charts/indicators/technical analysis → technical_analysis_agent
 - Analyst opinions/research/scenarios → research_agent
 
 CRITICAL:
+- For Indian stocks: Specify exchange (NSE .NS or BSE .BO). Default NSE.
+- For US stocks: Plain ticker (AAPL, not AAPL.US).
 - If user doesn't provide required info (dates, parameters), ASK before delegating
 - One agent at a time, wait for completion
 - Remember ticker from conversation - don't re-lookup
@@ -152,7 +157,7 @@ CRITICAL:
         global supervisor
         supervisor_graph = create_supervisor(
             model=ChatOpenAI(temperature=0, model_name="gpt-4o"),
-            agents=[stock_info_agent, technical_agent, ticker_finder, research_agent],
+            agents=[stock_info_agent, technical_agent, symbol_exchange_agent, research_agent],
             prompt=supervisor_prompt,
             add_handoff_back_messages=True,
             output_mode="full_history",
@@ -218,6 +223,7 @@ async def health_check():
         "stock_information": check_server("http://localhost:8565/mcp"),
         "technical_analysis": check_server("http://localhost:8566/mcp"),
         "research": check_server("http://localhost:8567/mcp"),
+        "symbol_exchange": check_server("http://localhost:8569/mcp"),
     }
 
     # Determine overall health
@@ -356,10 +362,14 @@ async def get_capabilities():
             "Comprehensive technical charting",
             "Trading signals and technical outlook"
         ],
-        "ticker_lookup": [
+        "symbol_exchange_management": [
             "Find ticker symbols from company names",
-            "Support for US and international stocks",
-            "Yahoo Finance integration"
+            "ISIN resolution and validation",
+            "Cross-listing detection (same stock on multiple exchanges)",
+            "Exchange information (NSE, BSE, NASDAQ, NYSE, LSE, HKEX, etc.)",
+            "Symbol validation and standardization",
+            "Support for US, Indian, and international stocks",
+            "Preferred exchange mapping (e.g., NSE vs BSE for Indian stocks)"
         ],
         "intelligent_features": [
             "Automatic ticker resolution from company names",
@@ -411,7 +421,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "api_server:app",
         host="0.0.0.0",
-        port=8568,
+        port=8569,
         reload=False,
         log_level="info"
     )

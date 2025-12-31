@@ -26,7 +26,7 @@ COPY . .
 RUN chmod +x start.sh
 
 # Expose ports
-EXPOSE 8565 8566 8567
+EXPOSE 8565 8566 8567 
 
 # Set the startup script as entrypoint
 CMD ["./start.sh"]

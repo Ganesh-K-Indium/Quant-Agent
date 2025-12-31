@@ -18,7 +18,7 @@ from mcp.client.streamable_http import streamablehttp_client
 from dotenv import load_dotenv
 from stock_exchange_agent.subagents.stock_information.langgraph_agent import create_stock_information_agent
 from stock_exchange_agent.subagents.technical_analysis_agent.langgraph_agent import create_technical_analysis_agent
-from stock_exchange_agent.subagents.ticker_finder_tool.langgraph_agent import create_ticker_finder_agent
+from stock_exchange_agent.subagents.symbol_exchange_agent.langgraph_agent import create_symbol_exchange_agent
 from stock_exchange_agent.subagents.research_agent.langgraph_agent import create_research_agent
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 import os
@@ -73,44 +73,65 @@ async def main():
         await wait_for_server("http://localhost:8565/mcp")  # Stock Information
         await wait_for_server("http://localhost:8566/mcp")  # Technical Analysis
         await wait_for_server("http://localhost:8567/mcp")  # Research
+        await wait_for_server("http://localhost:8569/mcp")  # Symbol & Exchange
         
         # Create sub-agents
         print("🔧 Creating sub-agents...")
         stock_info_agent = await create_stock_information_agent(checkpointer=saver)
         technical_agent = await create_technical_analysis_agent(checkpointer=saver)
-        ticker_finder = await create_ticker_finder_agent(checkpointer=saver)
+        symbol_exchange_agent = await create_symbol_exchange_agent(checkpointer=saver)
         research_agent = await create_research_agent(checkpointer=saver)
         
         print("✅ Sub-agents created successfully")
     
         supervisor_graph = create_supervisor(
             model=ChatOpenAI(temperature=0, model_name="gpt-4o"),
-            agents=[stock_info_agent, technical_agent, ticker_finder, research_agent],
+            agents=[stock_info_agent, technical_agent, symbol_exchange_agent, research_agent],
             prompt=(
-                "You are a supervisor managing four stock analysis agents. Route user requests to the appropriate agent.\n\n"
-                "**AGENTS:**\n"
-                "1. **ticker_finder_agent**: Converts company names to ticker symbols. Use FIRST when user provides a company name.\n"
-                "2. **stock_information_agent**: Stock prices, financials, news, dividends, holder info, recommendations, options, projections.\n"
-                "3. **technical_analysis_agent**: Charts and technical indicators (SMA, RSI, MACD, Bollinger Bands, Volume, Support/Resistance).\n"
-                "4. **research_agent**: Web research, analyst ratings, sentiment analysis, bull/bear scenarios.\n\n"
-                "**ROUTING RULES:**\n"
-                "- Company name (Apple, Tesla) → ticker_finder_agent FIRST, then route to specialist\n"
-                "- Ticker symbol provided (AAPL, TSLA) → Route directly to specialist\n"
-                "- Price/financials/news/dividends/holders/options → stock_information_agent\n"
-                "- Charts/RSI/SMA/MACD/Bollinger/technical → technical_analysis_agent\n"
-                "- Analyst ratings/research/scenarios/sentiment → research_agent\n\n"
-                "**CRITICAL RULES:**\n"
-                "1. Delegate to ONE agent at a time. Wait for response before next delegation.\n"
-                "2. Do NOT make up stock data. Only present what agents return.\n"
-                "3. If agent asks for more info (dates, parameters), relay that to user.\n"
-                "4. Remember ticker from conversation - don't re-lookup unless company changes.\n"
-                "5. For multi-part queries, delegate sequentially and combine results.\n"
-                "6. Do NOT invent prices, percentages, or recommendations.\n\n"
+                "You are HEAD OF EQUITY RESEARCH coordinating specialized financial analysts with institutional-grade precision.\n\n"
+                
+                "**AGENT CAPABILITIES:**\n"
+                "1. symbol_exchange_agent: Ticker discovery, ISIN resolution, exchange mapping, cross-listing analysis, disambiguation\n"
+                "2. stock_information_agent: Prices, financials, dividends, ownership, analyst targets, options\n"
+                "3. technical_analysis_agent: Charts, indicators (SMA/RSI/MACD/Bollinger), volume, support/resistance\n"
+                "4. research_agent: Analyst ratings, sentiment, bull/bear scenarios, industry analysis\n\n"
+                
+                "**ROUTING PRIORITIES:**\n"
+                "• Ambiguous company name (e.g., 'Apple', 'Reliance') → symbol_exchange_agent FIRST to disambiguate\n"
+                "• Clear ticker (AAPL, TSLA, RELIANCE.NS) → Skip to specialist agent directly\n"
+                "• Cross-listing queries ('which exchanges?', 'NSE vs BSE') → symbol_exchange_agent\n"
+                "• Price/financials/news → stock_information_agent\n"
+                "• Charts/technical indicators → technical_analysis_agent\n"
+                "• Research/ratings/sentiment → research_agent\n\n"
+                
+                "**KEY WORKFLOWS:**\n\n"
+                "Ambiguous name: 'Apple price worldwide'\n"
+                "  → symbol_exchange_agent (disambiguate + list exchanges) → WAIT user confirmation → stock_information_agent\n\n"
+                
+                "Clear ticker: 'AAPL price and RSI'\n"
+                "  → stock_information_agent (price) → technical_analysis_agent (RSI) → Synthesize\n\n"
+                
+                "Exchange comparison: 'RELIANCE.NS vs .BO prices'\n"
+                "  → symbol_exchange_agent (confirm same company) → stock_information_agent (both prices) → Compare\n\n"
+                
+                "**PROFESSIONAL STANDARDS:**\n"
+                "1. NEVER fabricate data - only present agent responses\n"
+                "2. ASK for clarification when ambiguous\n"
+                "3. Confirm security identity before price/analysis\n"
+                "4. Preserve ISIN context throughout conversation\n"
+                "5. Delegate ONE task at a time, wait for completion\n"
+                "6. Remember confirmed tickers, don't re-lookup\n"
+                "7. Provide context: exchange, currency, timestamp\n"
+                "8. Explain exchange differences when relevant\n\n"
+                
                 "**EXAMPLES:**\n"
-                "User: 'Apple stock price' → ticker_finder_agent → stock_information_agent\n"
-                "User: 'TSLA RSI chart' → technical_analysis_agent (ticker already provided)\n"
-                "User: 'What do analysts think about NVDA?' → research_agent\n"
-                "User: 'Show me RSI for Netflix' (no dates) → Agent will ask for date range, relay to user"
+                "❌ 'Apple price?' → stock_information_agent immediately\n"
+                "✓ 'Apple price?' → symbol_exchange_agent first (AAPL vs APLE disambiguation)\n\n"
+                
+                "❌ Make up data: 'AAPL trading at $180'\n"
+                "✓ Route to stock_information_agent, present exact response\n\n"
+                
+                "Ensure precision and professionalism in all coordination."
             ),
             add_handoff_back_messages=True,
             output_mode="full_history",
@@ -154,9 +175,12 @@ async def main():
         print("  • Comprehensive investment research")
         print("  • Upgrades, downgrades, and rating changes")
         
-        print("\n🔍 TICKER LOOKUP:")
+        print("\n🔍 SYMBOL & EXCHANGE MANAGEMENT:")
         print("  • Find ticker symbols from company names")
-        print("  • Support for US and international stocks")
+        print("  • ISIN resolution and cross-listing detection")
+        print("  • Exchange information (NSE, BSE, NASDAQ, NYSE, etc.)")
+        print("  • Symbol validation and standardization")
+        print("  • Support for US, Indian, and international stocks")
         
         print("\n🤖 INTELLIGENT FEATURES:")
         print("  • Automatic ticker resolution from company names")

@@ -46,13 +46,16 @@ async def fetch_stock_data(ticker: str, start_date: str, end_date: str) -> pd.Da
     """
     try:
         loop = asyncio.get_event_loop()
-        df = await loop.run_in_executor(None, lambda: yf.download(ticker, start=start_date, end=end_date))
+        # Download single ticker data - yfinance handles single tickers differently
+        df = await loop.run_in_executor(None, lambda: yf.download(ticker, start=start_date, end=end_date, progress=False))
 
         if df.empty:
             raise ValueError(f"No data found for {ticker} between {start_date} and {end_date}.")
     
+        # For single tickers, yfinance returns simple columns, not MultiIndex
+        # But if MultiIndex exists (edge case), flatten it
         if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.droplevel(1)
+            df.columns = df.columns.get_level_values(0)
 
         return df
 
@@ -132,8 +135,9 @@ async def get_stock_sma(ticker: str, start_date: str, end_date: str) -> dict:
         try:
                 df = await fetch_stock_data(ticker, start_date, end_date)
                 
-
-                close = df['Close']
+                # Ensure close is a 1D Series, not 2D DataFrame
+                close = df['Close'].squeeze() if hasattr(df['Close'], 'squeeze') else df['Close']
+                
                 df['SMA_20'] = SMAIndicator(close, window=20).sma_indicator()
                 df['SMA_100'] = SMAIndicator(close, window=100).sma_indicator()
                 df['SMA_200'] = SMAIndicator(close, window=200).sma_indicator()
@@ -200,7 +204,7 @@ async def get_stock_rsi(ticker: str, start_date: str, end_date: str) -> dict:
         """
         
         df = await fetch_stock_data(ticker, start_date, end_date)
-        close=df['Close']
+        close = df['Close'].squeeze() if hasattr(df['Close'], 'squeeze') else df['Close']
         rsi = RSIIndicator(close=close, window=14)
         
         df['RSI'] = rsi.rsi()
@@ -274,7 +278,7 @@ async def get_stock_bollingerbands(ticker: str, start_date: str, end_date: str) 
                 end_date: The end date to calculate BollingerBand (bb) for a stock (format: 'YYYY-MM-DD')
         """
         df = await fetch_stock_data(ticker, start_date, end_date)
-        close = df['Close']
+        close = df['Close'].squeeze() if hasattr(df['Close'], 'squeeze') else df['Close']
         bb = BollingerBands(close=close, window=20, window_dev=2)
         
         df['Upper_BB'] = bb.bollinger_hband()
@@ -354,7 +358,7 @@ async def get_stock_macd(ticker: str, start_date: str, end_date: str) -> dict:
                 end_date: The end date to calculate MACD for a stock (format: 'YYYY-MM-DD')
         """
         df = await fetch_stock_data(ticker, start_date, end_date)
-        close = df['Close']
+        close = df['Close'].squeeze() if hasattr(df['Close'], 'squeeze') else df['Close']
         macd = MACD(close=close)
         df['MACD'] = macd.macd()
         df['MACD_signal'] = macd.macd_signal()
