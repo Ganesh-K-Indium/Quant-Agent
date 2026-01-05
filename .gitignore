@@ -1,0 +1,11 @@
+.DS_Store
+.env
+__pycache__/
+*.db
+*.db-shm
+*.db-wal
+requirements_windows.txt
+requirements1.txt
+.vscode/
+stock_agent/responses/
+**/__pycache__/
