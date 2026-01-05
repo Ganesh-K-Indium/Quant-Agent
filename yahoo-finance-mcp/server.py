@@ -50,7 +50,8 @@ Available tools:
 - get_recommendations: Get recommendations or upgrades/downgrades for a given ticker symbol from yahoo finance. You can also specify the number of months back to get upgrades/downgrades for, default is 12.
 - get_target_price: Fetch the 1-year analyst target price for the given ticker symbol.
 - get_news_sentiment_and_price_prediction: Get company-specific news headlines from Yahoo Finance, perform sentiment analysis on headlines, and predict stock price movement (UP/DOWN/STABLE) based on average sentiment.
-- get_stock_5_year_projection: Analyze stock growth and revenue projection over the last 5 years using Yahoo Finance data.""",
+- get_stock_5_year_projection: Analyze stock growth and revenue projection over the last 5 years using Yahoo Finance data.
+- get_financial_ratios: Calculate key financial ratios (Liquidity, Solvency, Profitability, Valuation, Efficiency) using data from Yahoo Finance.""",
 )
 
 @yfinance_server.tool(
@@ -555,6 +556,286 @@ async def get_stock_5_year_projection(ticker: str) -> str:
     }
 
     return json.dumps(result, indent=2)
+
+
+def _validate_period(period: str) -> dict:
+    """
+    Validate the requested period and return guidance if invalid.
+    
+    Returns:
+        dict: {"valid": bool, "error": str, "suggestions": list} if invalid
+              {"valid": True} if valid
+    """
+    period_lower = period.lower().strip()
+    
+    # Check for monthly periods (invalid)
+    monthly_indicators = ['january', 'february', 'march', 'april', 'may', 'june',
+                          'july', 'august', 'september', 'october', 'november', 'december',
+                          'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+    
+    if any(month in period_lower for month in monthly_indicators):
+        return {
+            "valid": False,
+            "error": "Monthly financial ratios are not available",
+            "reason": "Companies only publish financial statements quarterly and annually, not monthly.",
+            "minimum_required": "quarterly or annual",
+            "suggested_periods": [
+                "TTM (Trailing Twelve Months - most current)",
+                "Q1 2025", "Q2 2025", "Q3 2025", "Q4 2024",
+                "FY2024 (Fiscal Year 2024)",
+                "2024 (Annual)",
+                "2023 (Annual)"
+            ]
+        }
+    
+    # Check for daily periods (invalid)
+    if 'day' in period_lower or 'daily' in period_lower:
+        return {
+            "valid": False,
+            "error": "Daily financial ratios are not available",
+            "reason": "Financial ratios are calculated from balance sheets and income statements, which are published quarterly or annually.",
+            "minimum_required": "quarterly or annual",
+            "suggested_periods": [
+                "TTM (Trailing Twelve Months)",
+                "Q3 2024", "Q2 2024",
+                "2024 (Annual)"
+            ]
+        }
+    
+    return {"valid": True}
+
+
+def _parse_period(period: str, balance_sheet_df, financials_df):
+    """
+    Parse period string and return appropriate column index from financial statements.
+    
+    Args:
+        period: Period string (e.g., "2024", "Q3 2024", "TTM")
+        balance_sheet_df: Balance sheet DataFrame
+        financials_df: Financials DataFrame
+    
+    Returns:
+        tuple: (column_index or None, use_ttm: bool, error_message or None)
+    """
+    period_str = period.strip().upper()
+    
+    # Handle TTM/Latest
+    if period_str in ['TTM', 'LATEST', 'CURRENT']:
+        return (None, True, None)  # Use TTM data from stock.info
+    
+    # Handle quarterly (e.g., "Q3 2024", "Q1 2025")
+    if period_str.startswith('Q'):
+        # For quarterly data, we need to use quarterly statements
+        # This is a simplified implementation - you'd need quarterly_balance_sheet and quarterly_financials
+        return (None, True, "Quarterly historical data requires using quarterly financial statements. Using TTM data instead.")
+    
+    # Handle annual (e.g., "2024", "FY2024")
+    year_str = period_str.replace('FY', '').replace('FISCAL', '').strip()
+    
+    try:
+        year = int(year_str)
+    except ValueError:
+        return (None, True, f"Could not parse year from '{period}'. Using TTM data.")
+    
+    # Try to find matching column in balance sheet
+    if not balance_sheet_df.empty:
+        for idx, col in enumerate(balance_sheet_df.columns):
+            if hasattr(col, 'year') and col.year == year:
+                return (idx, False, None)
+    
+    # Year not found in available data
+    available_years = []
+    if not balance_sheet_df.empty:
+        available_years = [col.year for col in balance_sheet_df.columns if hasattr(col, 'year')]
+    
+    if available_years:
+        return (None, True, f"Data for year {year} not available. Available years: {available_years}. Using TTM data.")
+    else:
+        return (None, True, f"No historical data available. Using TTM data.")
+
+
+async def _calculate_financial_ratios_logic(ticker: str, period: str = "TTM") -> str:
+    """Calculate key financial ratios independently."""
+    
+    # Step 1: Validate the period
+    validation_result = _validate_period(period)
+    if not validation_result["valid"]:
+        return json.dumps({
+            "error": validation_result["error"],
+            "reason": validation_result["reason"],
+            "minimum_required": validation_result["minimum_required"],
+            "suggested_periods": validation_result["suggested_periods"],
+            "ticker": ticker,
+            "requested_period": period
+        }, indent=2)
+    
+    stock = yf.Ticker(ticker)
+
+    try:
+        info = stock.info
+        # Try to get financial statements, but don't fail if some are missing
+        try:
+            bs = stock.balance_sheet
+            ist = stock.financials
+        except Exception:
+            bs = pd.DataFrame()
+            ist = pd.DataFrame()
+            
+    except Exception as e:
+        return json.dumps({"error": f"Failed to fetch data for {ticker}: {str(e)}"})
+    
+    # Step 2: Parse the period to determine which column to use
+    col_idx, use_ttm, parse_warning = _parse_period(period, bs, ist)
+    
+    ratios = {}
+
+    # Helper function to safe get from info
+    def get_info(key):
+        return info.get(key)
+
+    # Helper function to safe get from dataframe (with period-aware column selection)
+    def get_fs_item(df, key):
+        if df.empty: return None
+        try:
+            # Check if key exists in index
+            matches = [i for i in df.index if key.lower() in str(i).lower()]
+            if not matches: return None
+            # Use specified column index or default to most recent (column 0)
+            idx_to_use = col_idx if col_idx is not None else 0
+            if idx_to_use >= len(df.loc[matches[0]]):
+                return None
+            val = df.loc[matches[0]].iloc[idx_to_use]
+            return val if not pd.isna(val) else None
+        except:
+            return None
+
+    # --- 1. Liquidity Ratios ---
+    current_ratio = get_info('currentRatio') if use_ttm else None
+    quick_ratio = get_info('quickRatio') if use_ttm else None
+    
+    # Calculate if missing
+    if current_ratio is None:
+        ca = get_fs_item(bs, "Current Assets")
+        cl = get_fs_item(bs, "Current Liabilities")
+        if ca and cl and cl != 0:
+            current_ratio = ca / cl
+            
+    ratios['Liquidity'] = {
+        "Current Ratio": round(current_ratio, 2) if current_ratio else None,
+        "Quick Ratio": round(quick_ratio, 2) if quick_ratio else None
+    }
+
+    # --- 2. Solvency Ratios ---
+    debt_to_equity = get_info('debtToEquity') # Usually returned as percentage in info (e.g., 150 for 1.5)
+    
+    total_debt = get_info('totalDebt')
+    if total_debt is None:
+        total_debt = get_fs_item(bs, "Total Debt")
+        
+    total_equity = get_fs_item(bs, "Total Equity") or get_fs_item(bs, "Stockholders Equity")
+    total_assets = get_fs_item(bs, "Total Assets")
+    
+    if debt_to_equity is None and total_debt and total_equity and total_equity != 0:
+        debt_to_equity = (total_debt / total_equity) * 100 # Keep consistent with yfinance % format
+
+    debt_to_assets = None
+    if total_debt and total_assets and total_assets != 0:
+        debt_to_assets = total_debt / total_assets
+
+    ratios['Solvency'] = {
+        "Debt-to-Equity": round(debt_to_equity, 2) if debt_to_equity else None,
+        "Debt-to-Assets": round(debt_to_assets, 2) if debt_to_assets else None,
+        "Total Debt": total_debt,
+        "Total Equity": total_equity
+    }
+
+    # --- 3. Profitability Ratios ---
+    profit_margin = get_info('profitMargins') # decimal
+    roe = get_info('returnOnEquity') # decimal
+    roa = get_info('returnOnAssets') # decimal
+    
+    # Calculate Gross Margin
+    gross_margin = None
+    revenue = get_info('totalRevenue') or get_fs_item(ist, "Total Revenue")
+    gross_profit = get_info('grossProfits') or get_fs_item(ist, "Gross Profit")
+    
+    if revenue and gross_profit and revenue != 0:
+        gross_margin = gross_profit / revenue
+
+    ratios['Profitability'] = {
+        "Profit Margin": round(profit_margin * 100, 2) if profit_margin else None,
+        "Return on Equity (ROE)": round(roe * 100, 2) if roe else None,
+        "Return on Assets (ROA)": round(roa * 100, 2) if roa else None,
+        "Gross Margin": round(gross_margin * 100, 2) if gross_margin else None
+    }
+
+    # --- 4. Valuation Ratios ---
+    pe_ratio = get_info('trailingPE')
+    forward_pe = get_info('forwardPE')
+    peg_ratio = get_info('pegRatio')
+    pb_ratio = get_info('priceToBook')
+    ps_ratio = get_info('priceToSalesTrailing12Months')
+    
+    ratios['Valuation'] = {
+        "P/E Ratio": round(pe_ratio, 2) if pe_ratio else None,
+        "Forward P/E": round(forward_pe, 2) if forward_pe else None,
+        "PEG Ratio": round(peg_ratio, 2) if peg_ratio else None,
+        "P/B Ratio": round(pb_ratio, 2) if pb_ratio else None,
+        "P/S Ratio": round(ps_ratio, 2) if ps_ratio else None
+    }
+
+    # --- 5. Efficiency Ratios ---
+    asset_turnover = None
+    if revenue and total_assets and total_assets != 0:
+        asset_turnover = revenue / total_assets
+        
+    ratios['Efficiency'] = {
+        "Asset Turnover": round(asset_turnover, 2) if asset_turnover else None,
+        "Revenue per Share": get_info('revenuePerShare')
+    }
+
+    result = {
+        "ticker": ticker,
+        "period_requested": period,
+        "period_type": "TTM" if use_ttm else f"Annual {bs.columns[col_idx].year if col_idx is not None and not bs.empty else 'Unknown'}",
+        "ratios": ratios,
+        "currency": get_info('currency'),
+        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
+    # Add warning if period parsing had issues
+    if parse_warning:
+        result["warning"] = parse_warning
+    
+    return json.dumps(result, indent=2)
+
+
+@yfinance_server.tool(
+    name="get_financial_ratios",
+    description="""
+    Calculate comprehensive financial ratios for a given ticker symbol using Yahoo Finance data.
+    Includes Liquidity, Solvency, Profitability, Valuation, and Efficiency ratios.
+
+    Args:
+        ticker: str
+            The stock ticker symbol, e.g., "AAPL"
+        period: str (optional, default="TTM")
+            The time period for financial data:
+            - "TTM" or "latest": Trailing Twelve Months (most recent, real-time)
+            - "2024" or "FY2024": Annual data from fiscal year 2024
+            - "2023": Annual data from fiscal year 2023
+            - "Q3 2024": Quarterly data (note: uses TTM if quarterly statements not available)
+            
+            Note: Monthly or daily periods are NOT supported as companies only publish 
+            financial statements quarterly or annually.
+    Returns:
+        JSON with calculated ratios and metrics, along with period information.
+    """,
+)
+async def get_financial_ratios(ticker: str, period: str = "TTM") -> str:
+    """Calculate key financial ratios independently."""
+    return await _calculate_financial_ratios_logic(ticker, period)
+
 
 if __name__ == "__main__":
     print("Starting Yahoo Finance MCP server...")

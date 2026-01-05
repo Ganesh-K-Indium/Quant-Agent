@@ -1,0 +1,116 @@
+{
+    "messages": [
+        {
+            "content": "You  Show me Apple's profit margin for September 2026",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "8cf50ef2-36df-4430-ad1a-ee6a81715e6e"
+        },
+        {
+            "content": "I can't provide future data or predictions. If you need historical profit margin data for Apple, please specify the date range you're interested in, and I can assist you with that.",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 36,
+                    "prompt_tokens": 334,
+                    "total_tokens": 370,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_deacdd5f6f",
+                "id": "chatcmpl-CqEXUGTcKCQ8hQusqtNW2nivNc1c9",
+                "service_tier": "default",
+                "finish_reason": "stop",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "supervisor",
+            "id": "lc_run--019b4f7a-54a1-7b21-8261-217ea6bf4e03-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 334,
+                "output_tokens": 36,
+                "total_tokens": 370,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        },
+        {
+            "content": "You  how me Apple's profit margin for September 202",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "50b30dbd-8351-4216-a43e-f6ee35afd7d1"
+        },
+        {
+            "content": "It seems like there was a typo in your request. Could you please confirm the year you are interested in for Apple's profit margin in September?",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 29,
+                    "prompt_tokens": 391,
+                    "total_tokens": 420,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_deacdd5f6f",
+                "id": "chatcmpl-CqEXi6iUpk1ZQcM7AAvqaSO67FUmz",
+                "service_tier": "default",
+                "finish_reason": "stop",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "supervisor",
+            "id": "lc_run--019b4f7a-8c44-7e93-9662-ff37d21b9ee3-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 391,
+                "output_tokens": 29,
+                "total_tokens": 420,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        }
+    ]
+}

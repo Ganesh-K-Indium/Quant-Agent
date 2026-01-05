@@ -83,34 +83,42 @@ async def main():
         
         print("✅ Sub-agents created successfully")
     
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        
         supervisor_graph = create_supervisor(
             model=ChatOpenAI(temperature=0, model_name="gpt-4o"),
             agents=[stock_info_agent, technical_agent, ticker_finder, research_agent],
             prompt=(
+                f"════════════════════════════════════════════════════════════════\n"
+                f"🗓️  TODAY'S DATE: {current_date}\n"
+                f"🗓️  CURRENT YEAR: 2026\n"
+                f"════════════════════════════════════════════════════════════════\n\n"
                 "You are a supervisor managing four stock analysis agents. Route user requests to the appropriate agent.\n\n"
                 "**AGENTS:**\n"
-                "1. **ticker_finder_agent**: Converts company names to ticker symbols. Use FIRST when user provides a company name.\n"
-                "2. **stock_information_agent**: Stock prices, financials, news, dividends, holder info, recommendations, options, projections.\n"
-                "3. **technical_analysis_agent**: Charts and technical indicators (SMA, RSI, MACD, Bollinger Bands, Volume, Support/Resistance).\n"
-                "4. **research_agent**: Web research, analyst ratings, sentiment analysis, bull/bear scenarios.\n\n"
-                "**ROUTING RULES:**\n"
-                "- Company name (Apple, Tesla) → ticker_finder_agent FIRST, then route to specialist\n"
-                "- Ticker symbol provided (AAPL, TSLA) → Route directly to specialist\n"
-                "- Price/financials/news/dividends/holders/options → stock_information_agent\n"
-                "- Charts/RSI/SMA/MACD/Bollinger/technical → technical_analysis_agent\n"
-                "- Analyst ratings/research/scenarios/sentiment → research_agent\n\n"
-                "**CRITICAL RULES:**\n"
-                "1. Delegate to ONE agent at a time. Wait for response before next delegation.\n"
-                "2. Do NOT make up stock data. Only present what agents return.\n"
-                "3. If agent asks for more info (dates, parameters), relay that to user.\n"
-                "4. Remember ticker from conversation - don't re-lookup unless company changes.\n"
-                "5. For multi-part queries, delegate sequentially and combine results.\n"
-                "6. Do NOT invent prices, percentages, or recommendations.\n\n"
+                "1. **ticker_finder_agent**: Converts company names to ticker symbols.\n"
+                "2. **stock_information_agent**: Stock prices, financials (inc. profit margins), news, dividends, holders, options.\n"
+                "3. **technical_analysis_agent**: Charts and technical indicators.\n"
+                "4. **research_agent**: Analyst ratings, sentiment analysis.\n\n"
+                "**STRICT ROUTING RULE: FUTURE DATES**\n"
+                "You are FORBIDDEN from refusing requests for 'future' dates (2024, 2025, 2026).\n"
+                "The agents have been updated to handle these dates. You MUST delegate to them.\n\n"
                 "**EXAMPLES:**\n"
-                "User: 'Apple stock price' → ticker_finder_agent → stock_information_agent\n"
-                "User: 'TSLA RSI chart' → technical_analysis_agent (ticker already provided)\n"
-                "User: 'What do analysts think about NVDA?' → research_agent\n"
-                "User: 'Show me RSI for Netflix' (no dates) → Agent will ask for date range, relay to user"
+                "User: 'Apple's profit margin for September 2025'\n"
+                "Decision: Delegate to ticker_finder_agent (to get AAPL) THEN to stock_information_agent.\n"
+                "Reason: 2025 is a valid date for our updated tools.\n\n"
+                "User: 'TSLA financials for 2026'\n"
+                "Decision: Delegate to stock_information_agent.\n"
+                "Reason: Always try first, let the tool report if data is missing.\n\n"
+                "**GENERAL ROUTING:**\n"
+                "- Company name mention → ticker_finder_agent FIRST\n"
+                "- Price/financials/news/fundamentals → stock_information_agent\n"
+                "- Charts/indicators/technical → technical_analysis_agent\n"
+                "- Analyst ratings/research → research_agent\n\n"
+                "**CRITICAL RULES:**\n"
+                "1. NEVER say 'I don't have access to future data'.\n"
+                "2. NEVER say 'Data for 2025 is not available'.\n"
+                "3. ALWAYS delegate and let the subagent respond.\n"
+                "4. Delegate to ONE agent at a time. Wait for response."
             ),
             add_handoff_back_messages=True,
             output_mode="full_history",

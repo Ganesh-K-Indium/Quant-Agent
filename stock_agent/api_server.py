@@ -128,13 +128,34 @@ async def initialize_agents():
         print("✅ Sub-agents created successfully")
 
         # Create supervisor
-        supervisor_prompt = """You are a stock analysis supervisor managing 4 agents:
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        
+        supervisor_prompt = f"""
+════════════════════════════════════════════════════════════════
+🗓️  TODAY'S DATE: {current_date}
+🗓️  CURRENT YEAR: 2026
+════════════════════════════════════════════════════════════════
+
+You are a supervisor managing 4 stock analysis agents. Route user requests to the appropriate agent.
 
 AGENTS:
 1. ticker_finder_agent - Converts company names to ticker symbols
 2. stock_information_agent - Fundamental data (prices, financials, news, statements, holders, options)
 3. technical_analysis_agent - Technical charts (SMA, RSI, MACD, Bollinger, Volume, Support/Resistance)
 4. research_agent - Analyst ratings, web research, sentiment, bull/bear scenarios
+
+**STRICT ROUTING RULE: FUTURE DATES**
+You are FORBIDDEN from refusing requests for 'future' dates (2024, 2025, 2026).
+The agents have been updated to handle these dates. You MUST delegate to them.
+
+**EXAMPLES:**
+User: 'Apple's profit margin for September 2025'
+Decision: Delegate to ticker_finder_agent (to get AAPL) THEN to stock_information_agent.
+Reason: 2025 is a valid date for our updated tools.
+
+User: 'TSLA financials for 2026'
+Decision: Delegate to stock_information_agent.
+Reason: Always try first, let the tool report if data is missing.
 
 ROUTING RULES:
 - Company name mentioned → ticker_finder_agent FIRST
@@ -143,11 +164,10 @@ ROUTING RULES:
 - Analyst opinions/research/scenarios → research_agent
 
 CRITICAL:
-- If user doesn't provide required info (dates, parameters), ASK before delegating
-- One agent at a time, wait for completion
-- Remember ticker from conversation - don't re-lookup
-- Never invent data - only report what agents return
-- Combine multi-agent responses into coherent answer"""
+1. NEVER say 'I don't have access to future data'.
+2. NEVER say 'Data for 2025 is not available'.
+3. ALWAYS delegate and let the subagent respond.
+4. Delegate to ONE agent at a time. Wait for response."""
 
         global supervisor
         supervisor_graph = create_supervisor(

@@ -1,0 +1,60 @@
+{
+    "messages": [
+        {
+            "content": "hi",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "cd6bf701-5ed1-41b2-9c1d-eb7350296940"
+        },
+        {
+            "content": "Hello! How can I assist you with stock analysis today?",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 13,
+                    "prompt_tokens": 323,
+                    "total_tokens": 336,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_929e055098",
+                "id": "chatcmpl-Cnjfd6gnzA72PKEKNOWwyx09R2d9U",
+                "service_tier": "default",
+                "finish_reason": "stop",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "supervisor",
+            "id": "lc_run--019b2bfe-8e38-7880-ba22-8943dc505f18-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 323,
+                "output_tokens": 13,
+                "total_tokens": 336,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        }
+    ]
+}

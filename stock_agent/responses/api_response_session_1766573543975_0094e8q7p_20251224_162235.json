@@ -1,0 +1,60 @@
+{
+    "messages": [
+        {
+            "content": "Show me Apple's profit margin for September 2024",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "3d32ccd8-c772-45f4-8305-70c14f333746"
+        },
+        {
+            "content": "I currently don't have access to future data, including Apple's profit margin for September 2024. If you need historical profit margin data or the most recent available data, I can assist with that. Would you like me to provide the latest available profit margin information for Apple?",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 55,
+                    "prompt_tokens": 332,
+                    "total_tokens": 387,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_deacdd5f6f",
+                "id": "chatcmpl-CqGlpcbaUS8C7dWyFU46z7JYd3hEH",
+                "service_tier": "default",
+                "finish_reason": "stop",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "supervisor",
+            "id": "lc_run--019b4ffd-340c-79b2-93c2-16ed000feded-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 332,
+                "output_tokens": 55,
+                "total_tokens": 387,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        }
+    ]
+}

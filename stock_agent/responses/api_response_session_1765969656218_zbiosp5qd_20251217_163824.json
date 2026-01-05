@@ -1,0 +1,494 @@
+{
+    "messages": [
+        {
+            "content": "hi",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "cd6bf701-5ed1-41b2-9c1d-eb7350296940"
+        },
+        {
+            "content": "Hello! How can I assist you with stock analysis today?",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 13,
+                    "prompt_tokens": 323,
+                    "total_tokens": 336,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_929e055098",
+                "id": "chatcmpl-Cnjfd6gnzA72PKEKNOWwyx09R2d9U",
+                "service_tier": "default",
+                "finish_reason": "stop",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "supervisor",
+            "id": "lc_run--019b2bfe-8e38-7880-ba22-8943dc505f18-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 323,
+                "output_tokens": 13,
+                "total_tokens": 336,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        },
+        {
+            "content": "get me the stock data of netf;ix for last 5 days",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "d1215878-bf90-4a51-ab93-a56a5f6f2ec7"
+        },
+        {
+            "content": "",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 15,
+                    "prompt_tokens": 361,
+                    "total_tokens": 376,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_929e055098",
+                "id": "chatcmpl-Cnjg07BBeEiOctdRl0bqoaxooTuAt",
+                "service_tier": "default",
+                "finish_reason": "tool_calls",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "supervisor",
+            "id": "lc_run--019b2bfe-ea9e-70e3-94f0-2b748a14fc0f-0",
+            "tool_calls": [
+                {
+                    "name": "transfer_to_ticker_finder_agent",
+                    "args": {},
+                    "id": "call_DJzXb3lzSj0uSyAvZDvQMs6U",
+                    "type": "tool_call"
+                }
+            ],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 361,
+                "output_tokens": 15,
+                "total_tokens": 376,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        },
+        {
+            "content": "Successfully transferred to ticker_finder_agent",
+            "additional_kwargs": {},
+            "response_metadata": {
+                "__handoff_destination": "ticker_finder_agent"
+            },
+            "type": "tool",
+            "name": "transfer_to_ticker_finder_agent",
+            "id": "92acd839-568d-49bd-9064-8ce0668f0365",
+            "tool_call_id": "call_DJzXb3lzSj0uSyAvZDvQMs6U",
+            "artifact": null,
+            "status": "success"
+        },
+        {
+            "content": "NFLX",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 3,
+                    "prompt_tokens": 380,
+                    "total_tokens": 383,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_e413f45763",
+                "id": "chatcmpl-Cnjg17xTKuUGwH7DjKpiySfkGrhm0",
+                "service_tier": "default",
+                "finish_reason": "stop",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "ticker_finder_agent",
+            "id": "lc_run--019b2bfe-ef29-78b2-8ab8-bfeec07af9b1-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 380,
+                "output_tokens": 3,
+                "total_tokens": 383,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        },
+        {
+            "content": "Transferring back to supervisor",
+            "additional_kwargs": {},
+            "response_metadata": {
+                "__is_handoff_back": true
+            },
+            "type": "ai",
+            "name": "ticker_finder_agent",
+            "id": "af193f6f-8880-48ed-b7a2-5859315ad73a",
+            "tool_calls": [
+                {
+                    "name": "transfer_back_to_supervisor",
+                    "args": {},
+                    "id": "c2ab1067-cfc9-4299-a0c8-1977fea1fba6",
+                    "type": "tool_call"
+                }
+            ],
+            "invalid_tool_calls": [],
+            "usage_metadata": null
+        },
+        {
+            "content": "Successfully transferred back to supervisor",
+            "additional_kwargs": {},
+            "response_metadata": {
+                "__is_handoff_back": true
+            },
+            "type": "tool",
+            "name": "transfer_back_to_supervisor",
+            "id": "f8fa1450-7ff5-41a6-9e75-bef3aa27eac1",
+            "tool_call_id": "c2ab1067-cfc9-4299-a0c8-1977fea1fba6",
+            "artifact": null,
+            "status": "success"
+        },
+        {
+            "content": "",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 13,
+                    "prompt_tokens": 459,
+                    "total_tokens": 472,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_929e055098",
+                "id": "chatcmpl-Cnjg2qtc9QLEPIQEJFwPQlUM78OXV",
+                "service_tier": "default",
+                "finish_reason": "tool_calls",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "supervisor",
+            "id": "lc_run--019b2bfe-f293-71c1-84a9-d00d2ad7ff15-0",
+            "tool_calls": [
+                {
+                    "name": "transfer_to_stock_information_agent",
+                    "args": {},
+                    "id": "call_t3cIkwjiVShapQMofxR9DPOR",
+                    "type": "tool_call"
+                }
+            ],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 459,
+                "output_tokens": 13,
+                "total_tokens": 472,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        },
+        {
+            "content": "Successfully transferred to stock_information_agent",
+            "additional_kwargs": {},
+            "response_metadata": {
+                "__handoff_destination": "stock_information_agent"
+            },
+            "type": "tool",
+            "name": "transfer_to_stock_information_agent",
+            "id": "dafde460-52bd-4b01-b5e8-d81f829e0f13",
+            "tool_call_id": "call_t3cIkwjiVShapQMofxR9DPOR",
+            "artifact": null,
+            "status": "success"
+        },
+        {
+            "content": "",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 28,
+                    "prompt_tokens": 2046,
+                    "total_tokens": 2074,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_e413f45763",
+                "id": "chatcmpl-Cnjg3VMV2oV33yoC3n6kK9TkBF1s6",
+                "service_tier": "default",
+                "finish_reason": "tool_calls",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "stock_information_agent",
+            "id": "lc_run--019b2bfe-f6fb-74e3-a96a-354ded74a609-0",
+            "tool_calls": [
+                {
+                    "name": "get_historical_stock_prices",
+                    "args": {
+                        "ticker": "NFLX",
+                        "period": "5d",
+                        "interval": "1d"
+                    },
+                    "id": "call_aHZiUalSkUfmVwwaekCZdzjR",
+                    "type": "tool_call"
+                }
+            ],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 2046,
+                "output_tokens": 28,
+                "total_tokens": 2074,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        },
+        {
+            "content": [
+                {
+                    "type": "text",
+                    "text": "[{\"Date\":\"2025-12-10T05:00:00.000Z\",\"Open\":96.7399978638,\"High\":96.9700012207,\"Low\":92.3499984741,\"Close\":92.7099990845,\"Volume\":74129300,\"Dividends\":0.0,\"Stock Splits\":0.0},{\"Date\":\"2025-12-11T05:00:00.000Z\",\"Open\":93.9000015259,\"High\":94.8199996948,\"Low\":92.7600021362,\"Close\":94.0899963379,\"Volume\":43949000,\"Dividends\":0.0,\"Stock Splits\":0.0},{\"Date\":\"2025-12-12T05:00:00.000Z\",\"Open\":95.5,\"High\":96.9199981689,\"Low\":94.6500015259,\"Close\":95.1900024414,\"Volume\":49323100,\"Dividends\":0.0,\"Stock Splits\":0.0},{\"Date\":\"2025-12-15T05:00:00.000Z\",\"Open\":96.0199966431,\"High\":96.3700027466,\"Low\":93.5299987793,\"Close\":93.7699966431,\"Volume\":40016500,\"Dividends\":0.0,\"Stock Splits\":0.0},{\"Date\":\"2025-12-16T05:00:00.000Z\",\"Open\":93.8799972534,\"High\":94.9300003052,\"Low\":93.3199996948,\"Close\":94.5699996948,\"Volume\":34075400,\"Dividends\":0.0,\"Stock Splits\":0.0}]",
+                    "id": "lc_ae498ac5-07eb-4ad2-a156-63774d8623f6"
+                }
+            ],
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "tool",
+            "name": "get_historical_stock_prices",
+            "id": "84c9339e-fedd-43fd-a491-011a5c78032e",
+            "tool_call_id": "call_aHZiUalSkUfmVwwaekCZdzjR",
+            "artifact": {
+                "structured_content": {
+                    "result": "[{\"Date\":\"2025-12-10T05:00:00.000Z\",\"Open\":96.7399978638,\"High\":96.9700012207,\"Low\":92.3499984741,\"Close\":92.7099990845,\"Volume\":74129300,\"Dividends\":0.0,\"Stock Splits\":0.0},{\"Date\":\"2025-12-11T05:00:00.000Z\",\"Open\":93.9000015259,\"High\":94.8199996948,\"Low\":92.7600021362,\"Close\":94.0899963379,\"Volume\":43949000,\"Dividends\":0.0,\"Stock Splits\":0.0},{\"Date\":\"2025-12-12T05:00:00.000Z\",\"Open\":95.5,\"High\":96.9199981689,\"Low\":94.6500015259,\"Close\":95.1900024414,\"Volume\":49323100,\"Dividends\":0.0,\"Stock Splits\":0.0},{\"Date\":\"2025-12-15T05:00:00.000Z\",\"Open\":96.0199966431,\"High\":96.3700027466,\"Low\":93.5299987793,\"Close\":93.7699966431,\"Volume\":40016500,\"Dividends\":0.0,\"Stock Splits\":0.0},{\"Date\":\"2025-12-16T05:00:00.000Z\",\"Open\":93.8799972534,\"High\":94.9300003052,\"Low\":93.3199996948,\"Close\":94.5699996948,\"Volume\":34075400,\"Dividends\":0.0,\"Stock Splits\":0.0}]"
+                }
+            },
+            "status": "success"
+        },
+        {
+            "content": "Here is the stock data for Netflix (NFLX) over the last 5 days:\n\n| Date       | Open   | High   | Low    | Close  | Volume   |\n|------------|--------|--------|--------|--------|----------|\n| 2025-12-10 | 96.74  | 96.97  | 92.35  | 92.71  | 74,129,300 |\n| 2025-12-11 | 93.90  | 94.82  | 92.76  | 94.09  | 43,949,000 |\n| 2025-12-12 | 95.50  | 96.92  | 94.65  | 95.19  | 49,323,100 |\n| 2025-12-15 | 96.02  | 96.37  | 93.53  | 93.77  | 40,016,500 |\n| 2025-12-16 | 93.88  | 94.93  | 93.32  | 94.57  | 34,075,400 |\n\nIf you need more information or further analysis, feel free to ask!",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 265,
+                    "prompt_tokens": 2468,
+                    "total_tokens": 2733,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_e413f45763",
+                "id": "chatcmpl-CnjgCiEfyZnhNT1WzHti9yEe4cG8Q",
+                "service_tier": "default",
+                "finish_reason": "stop",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "stock_information_agent",
+            "id": "lc_run--019b2bff-1bf3-7e72-a3a6-03d8ff1220d3-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 2468,
+                "output_tokens": 265,
+                "total_tokens": 2733,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        },
+        {
+            "content": "Transferring back to supervisor",
+            "additional_kwargs": {},
+            "response_metadata": {
+                "__is_handoff_back": true
+            },
+            "type": "ai",
+            "name": "stock_information_agent",
+            "id": "4668dad1-de04-4bd4-a780-c3e18e2368e2",
+            "tool_calls": [
+                {
+                    "name": "transfer_back_to_supervisor",
+                    "args": {},
+                    "id": "d946f2b0-ceaf-4c0f-a946-e36fd0f89c5d",
+                    "type": "tool_call"
+                }
+            ],
+            "invalid_tool_calls": [],
+            "usage_metadata": null
+        },
+        {
+            "content": "Successfully transferred back to supervisor",
+            "additional_kwargs": {},
+            "response_metadata": {
+                "__is_handoff_back": true
+            },
+            "type": "tool",
+            "name": "transfer_back_to_supervisor",
+            "id": "498a86c2-f538-4acf-97fc-55f2287742bc",
+            "tool_call_id": "d946f2b0-ceaf-4c0f-a946-e36fd0f89c5d",
+            "artifact": null,
+            "status": "success"
+        },
+        {
+            "content": "Is there anything else you would like to know or analyze about Netflix or any other stock?",
+            "additional_kwargs": {
+                "refusal": null
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "completion_tokens": 19,
+                    "prompt_tokens": 1233,
+                    "total_tokens": 1252,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0
+                    },
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0
+                    }
+                },
+                "model_provider": "openai",
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_e413f45763",
+                "id": "chatcmpl-CnjgHQs51Iy0nLdO6Pf3YrUqH24QZ",
+                "service_tier": "default",
+                "finish_reason": "stop",
+                "logprobs": null
+            },
+            "type": "ai",
+            "name": "supervisor",
+            "id": "lc_run--019b2bff-2fc8-7d40-953f-03d3191c0d98-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+                "input_tokens": 1233,
+                "output_tokens": 19,
+                "total_tokens": 1252,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        }
+    ]
+}
