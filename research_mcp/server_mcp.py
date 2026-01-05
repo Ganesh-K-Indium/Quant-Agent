@@ -131,6 +131,8 @@ def normalize_rating(rating_text: str) -> tuple:
     Normalize rating text to canonical format.
     Returns (normalized_rating, numeric_score).
     """
+    if rating_text is None or not rating_text:
+        rating_text = "hold"
     rating_lower = rating_text.lower().strip()
     
     # Strong Buy mappings
@@ -238,6 +240,7 @@ async def web_search(
             "query": query,
             "max_results": max_results,
             "search_depth": search_depth,
+            "topic": "news"  # Required to get published_date field
         }
         
         if include_domains:
@@ -249,13 +252,26 @@ async def web_search(
         
         # Process results
         results = []
+        sources = []
         for item in response.get("results", []):
-            results.append({
+            pub_date = item.get("published_date", "")
+            if not pub_date or pub_date == "":
+                pub_date = "Not provided by source"
+            
+            result_item = {
                 "title": item.get("title", ""),
                 "url": item.get("url", ""),
                 "content": item.get("content", ""),
                 "score": item.get("score", 0),
-                "published_date": item.get("published_date", "")
+                "published_date": pub_date
+            }
+            results.append(result_item)
+            
+            # Build sources array for easy citation
+            sources.append({
+                "url": result_item["url"],
+                "title": result_item["title"],
+                "published_date": pub_date
             })
         
         output = {
@@ -263,6 +279,7 @@ async def web_search(
             "query": query,
             "results_count": len(results),
             "results": results,
+            "sources": sources,
             "search_time": datetime.now().isoformat()
         }
         
@@ -329,6 +346,7 @@ async def _search_analyst_ratings_impl(
                     query=query,
                     max_results=5,
                     search_depth="advanced",
+                    topic="news",  # Required to get published_date field
                     include_domains=financial_domains
                 )
                 
@@ -338,6 +356,7 @@ async def _search_analyst_ratings_impl(
                         "url": item.get("url", ""),
                         "content": item.get("content", ""),
                         "score": item.get("score", 0),
+                        "published_date": item.get("published_date", ""),
                         "source_query": query
                     })
             except Exception as e:
@@ -346,10 +365,18 @@ async def _search_analyst_ratings_impl(
         # Deduplicate by URL
         seen_urls = set()
         unique_results = []
+        sources = []
         for r in sorted(all_results, key=lambda x: x['score'], reverse=True):
             if r['url'] not in seen_urls:
                 seen_urls.add(r['url'])
                 unique_results.append(r)
+                # Build sources array
+                pub_date = r['published_date'] if r.get('published_date') and r['published_date'] != "" else "Not provided by source"
+                sources.append({
+                    "url": r['url'],
+                    "title": r['title'],
+                    "published_date": pub_date
+                })
         
         output = {
             "success": True,
@@ -357,6 +384,7 @@ async def _search_analyst_ratings_impl(
             "company_name": company_name,
             "results_count": len(unique_results),
             "results": unique_results[:15],  # Top 15 results
+            "sources": sources[:15],
             "search_time": datetime.now().isoformat()
         }
         
@@ -478,7 +506,7 @@ Only include ratings you can clearly identify from the content. Do not make up d
         target_prices = []
         
         for r in extracted.get("ratings", []):
-            rating_text = r.get("rating", "hold")
+            rating_text = r.get("rating") or "hold"
             norm_rating, score = normalize_rating(rating_text)
             rating_scores.append(score)
             
@@ -521,6 +549,22 @@ Only include ratings you can clearly identify from the content. Do not make up d
         for nr in normalized_ratings:
             distribution[nr["rating"]] += 1
         
+        # Extract source URLs and published dates from search_results
+        sources = []
+        for r in search_results[:10]:
+            if r.get('url'):
+                pub_date = r.get('published_date', '')
+                if not pub_date or pub_date == "":
+                    pub_date = "Not provided by source"
+                sources.append({
+                    "url": r.get('url'),
+                    "title": r.get('title', ''),
+                    "published_date": pub_date
+                })
+        
+        # Also maintain source_urls for backward compatibility
+        source_urls = [s['url'] for s in sources]
+        
         output = {
             "success": True,
             "symbol": symbol,
@@ -531,6 +575,8 @@ Only include ratings you can clearly identify from the content. Do not make up d
             "rating_distribution": dict(distribution),
             "ratings": normalized_ratings,
             "key_insights": extracted.get("key_insights", []),
+            "sources": sources,
+            "source_urls": source_urls,
             "aggregated_at": datetime.now().isoformat()
         }
         
@@ -740,7 +786,8 @@ async def _generate_scenarios_impl(
     company_name: Optional[str] = None,
     ratings_data: Optional[Dict[str, Any]] = None,
     news_summary: Optional[str] = None,
-    current_price: Optional[float] = None
+    current_price: Optional[float] = None,
+    source_urls: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """Generate bull and bear scenarios for a stock."""
     try:
@@ -834,12 +881,20 @@ Be specific, data-driven, and balanced in your analysis. Probabilities should su
         
         scenarios = json.loads(response.choices[0].message.content)
         
+        # Get sources from ratings_data if not provided
+        sources = []
+        if not source_urls and ratings_data:
+            source_urls = ratings_data.get('source_urls', [])
+            sources = ratings_data.get('sources', [])
+        
         return {
             "success": True,
             "symbol": symbol,
             "company_name": company_name,
             "current_price": current_price,
             "scenarios": scenarios,
+            "sources": sources,
+            "source_urls": source_urls or [],
             "generated_at": datetime.now().isoformat()
         }
         
@@ -862,6 +917,7 @@ Be specific, data-driven, and balanced in your analysis. Probabilities should su
         ratings_data: dict - Optional aggregated ratings data
         news_summary: str - Optional summary of recent news
         current_price: float - Optional current stock price
+        source_urls: list - Optional list of source URLs
     
     Returns:
         dict - Bull and bear scenarios with catalysts, risks, probabilities, and price targets
@@ -872,10 +928,11 @@ async def generate_scenarios(
     company_name: Optional[str] = None,
     ratings_data: Optional[Dict[str, Any]] = None,
     news_summary: Optional[str] = None,
-    current_price: Optional[float] = None
+    current_price: Optional[float] = None,
+    source_urls: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """Generate bull and bear scenarios for a stock."""
-    return await _generate_scenarios_impl(symbol, company_name, ratings_data, news_summary, current_price)
+    return await _generate_scenarios_impl(symbol, company_name, ratings_data, news_summary, current_price, source_urls)
 
 
 # ============================================================================
@@ -1448,6 +1505,9 @@ async def comprehensive_research(
             "research_started_at": datetime.now().isoformat()
         }
         
+        # Collect all source URLs and dates
+        all_sources = []
+        
         # Step 1: Search for analyst ratings
         print(f"🔍 Searching for analyst ratings for {symbol}...")
         ratings_search = await _search_analyst_ratings_impl(symbol, company_name)
@@ -1455,6 +1515,19 @@ async def comprehensive_research(
             "success": ratings_search.get("success"),
             "results_count": ratings_search.get("results_count", 0)
         }
+        
+        # Collect URLs and dates from search results
+        if ratings_search.get("results"):
+            for r in ratings_search.get("results", []):
+                if r.get('url'):
+                    pub_date = r.get('published_date', '')
+                    if not pub_date or pub_date == "":
+                        pub_date = "Not provided by source"
+                    all_sources.append({
+                        "url": r.get('url'),
+                        "title": r.get('title', ''),
+                        "published_date": pub_date
+                    })
         
         # Step 2: Aggregate ratings
         print(f"📊 Aggregating ratings for {symbol}...")
@@ -1484,15 +1557,29 @@ async def comprehensive_research(
         if include_scenarios:
             print(f"🎯 Generating bull/bear scenarios for {symbol}...")
             news_summary = results.get("summary", {}).get("summary", "")
+            # Extract source_urls for backward compatibility
+            all_source_urls = [s['url'] for s in all_sources]
             scenarios = await _generate_scenarios_impl(
                 symbol=symbol,
                 company_name=company_name,
                 ratings_data=results.get("aggregated_ratings"),
                 news_summary=news_summary,
-                current_price=current_price
+                current_price=current_price,
+                source_urls=all_source_urls
             )
             results["scenarios"] = scenarios
         
+        # Add all sources with dates to results
+        # Deduplicate by URL
+        seen_urls = set()
+        unique_sources = []
+        for s in all_sources:
+            if s['url'] not in seen_urls:
+                seen_urls.add(s['url'])
+                unique_sources.append(s)
+        
+        results["sources"] = unique_sources
+        results["source_urls"] = [s['url'] for s in unique_sources]  # Backward compatibility
         results["success"] = True
         results["research_completed_at"] = datetime.now().isoformat()
         

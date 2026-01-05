@@ -96,6 +96,13 @@ After successful chart generation:
 1. Chart location (filename)
 2. Key indicator values from response
 3. Brief interpretation (bullish/bearish/neutral)
+4. **Data Attribution**: "Technical analysis based on historical price data | Date Range: [start_date] to [end_date] | Generated: [current timestamp]"
+
+**DATA SOURCE ATTRIBUTION:**
+- All technical indicators are calculated from historical price data
+- Always state the exact date range analyzed
+- Include when the analysis was generated
+- Example: "Technical Analysis for AAPL | Data Period: Dec 13, 2025 - Jan 2, 2026 | Generated: Jan 2, 2026 4:00 PM | Source: Yahoo Finance historical data"
 
 **EXAMPLES:**
 User: "Show me SMA for Tesla for 50 days"

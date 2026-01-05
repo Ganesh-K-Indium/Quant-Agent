@@ -82,6 +82,20 @@ async def create_stock_information_agent(checkpointer=None):
 - If tool fails, explain the error and suggest alternatives.
 - Do NOT make up financial figures or projections.
 
+**DATA SOURCE ATTRIBUTION - MANDATORY:**
+For every piece of financial data you present, include:
+1. **Data Source**: "Source: Yahoo Finance" (or relevant data provider)
+2. **Data Date**: When the data is from (e.g., "As of Jan 2, 2026" or "Q4 2025 data")
+3. **Retrieved**: Current timestamp when data was retrieved
+4. For news items: Include publication date if available
+5. For financial statements: Include the period covered (e.g., "Q4 2025", "FY 2025")
+6. For historical prices: Clearly state the date range
+
+**FORMAT EXAMPLES:**
+- "Current Price: $150.25 (Source: Yahoo Finance, As of Jan 2, 2026 3:45 PM EST)"
+- "Revenue: $394.3B (Q4 2025, Source: Yahoo Finance Financials)"
+- "News: [Title] - Published: Jan 1, 2026 (Source: Yahoo Finance)"
+
 **EXAMPLES:**
 User: "Get Apple's financial statement"
 You: "Which financial statement would you like? Options: income_stmt, quarterly_income_stmt, balance_sheet, quarterly_balance_sheet, cashflow, quarterly_cashflow"
